@@ -31,7 +31,7 @@ enum Direction{
 }
 
 
-#[derive(Debug,Eq,PartialEq,Hash)]
+#[derive(Debug,Eq,PartialEq,Hash,Clone)]
 struct Piece{
     colors : [Color;6],
 }
@@ -39,6 +39,25 @@ struct Piece{
 struct RotablePiece<'a>{
     pub piece: &'a Piece,
     rotations :  [&'a Piece;4]
+}
+
+struct PieceSet{
+    pieces: Vec<Piece>,
+}
+
+impl PieceSet{
+
+    pub fn from(p:Piece) -> PieceSet {
+        use std::collections::HashSet;
+        let mut allPieces : HashSet<Piece> = HashSet::new();
+        let mut notProcessedPieces : HashSet<Piece> = HashSet::new();
+
+        notProcessedPieces.insert(p);
+
+        panic!("TBD");
+        
+        
+    }
 }
 
 
@@ -101,35 +120,6 @@ impl Piece{
     }
 }
 
-#[macro_use]
-extern crate lazy_static;
-
-use std::collections::HashMap;
-use std::sync::Mutex;
-
-lazy_static! {
-    static ref HASHMAP: Mutex<HashMap<Piece, &'static RotablePiece<'static>>> = {
-        let mut m = HashMap::new();
-         Mutex::new(m)
-    };    
-}
-
-
-
-impl <'a> RotablePiece<'a>{
-    pub fn rotate(&self, _d: Direction ) -> &RotablePiece {
-        self
-    }
-
-    pub fn from(p:Piece) -> &'a RotablePiece<'a>{
-        let mut map =HASHMAP.lock().unwrap();
-        map.insert(p,RotablePiece{piece:&p});
-        panic!("Sin implementar");
-    }
-
-
-    
-}
 
 
 
@@ -147,22 +137,16 @@ mod tests {
         
         let p1 = Piece{colors:[C1,C2,C3,C4,C5,C6]};
         let p2 = p1.rotate(South);
-        let p3 = p1.rotate(North);
+        let p3 = p2.rotate(North);
 
         println!("Pieza original: {:?}", p1 );
         println!("Pieza rotada: {:?}", p3);
 
         assert!(p1==p3);
 
-        assert!(!std::ptr::eq(&p2,&p3));        assert_eq!(2 + 2, 4);
+        assert!(!std::ptr::eq(&p2,&p3));
     }
 
-    #[test]
-    fn samePointer(){
-        let p = Piece{colors:[C1,C2,C3,C4,C5,C6]};
-        let rp1 = RotablePiece::from(p);
-        let rp2 = rp1.rotate(South).rotate(North);
-        assert!(std::ptr::eq(&rp1,&rp2));
-    }
+ 
             
 }
