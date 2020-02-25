@@ -117,7 +117,7 @@ impl PieceSet{
                 panic!("Intentando añadir una pieza que ya estaba");
             }
             pieces.push(piece);
-            pieces.len()
+            pieces.len()-1
         }
 
         fn piece_index(pieces: &Vec<Piece> ,piece: &Piece) -> Option<usize> {
@@ -142,6 +142,7 @@ impl PieceSet{
             if not_processed_pieces.len() == 0 {
                 break;
             }
+            println!("not_processed_pieces:{:?}", not_processed_pieces);
 
             let previous_len = pieces.len();
             println!("previous_len:{}", previous_len);
@@ -150,22 +151,34 @@ impl PieceSet{
             println!("next_piece:{:?}", next_piece);
 
             let new_index = add_piece_or_get_index(&mut pieces,next_piece);
+            println!("new_index:{:?}", new_index);
 
-            let new_rotations : Vec<Piece> = piece.rotations().to_vec();
+            let new_rotations : Vec<Piece> = next_piece.rotations().to_vec();
 
             let new_rotations_indexes = new_rotations.iter().map(|p| add_piece_or_get_index(&mut pieces,*p) );
 
             let new_rotations_indexes_vec : Vec<usize> = new_rotations_indexes.collect();
+            println!("Después de añadir nuevas rotaciones: pieces: {:?}", pieces );
+            println!("new_rotations_indexes_vec: {:?}", new_rotations_indexes_vec );
 
-            for i in 0..new_rotations_indexes_vec.len() {
+
+            for i in (0..new_rotations_indexes_vec.len()).rev() {
                 let index = new_rotations_indexes_vec[i];
                 
                 if index >= previous_len {
                     not_processed_pieces.push( new_rotations[i] );
                 }
             }
-            
-            rotations[new_index] = new_rotations_indexes_vec;
+
+            if new_index == rotations.len() {
+                rotations.push( new_rotations_indexes_vec );
+            }
+            else if new_index < rotations.len() {
+                rotations[new_index] = new_rotations_indexes_vec;
+            }
+            else{
+                panic!("No esperaba esto");
+            }
         }
 
         PieceSet{
