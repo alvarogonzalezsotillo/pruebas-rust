@@ -116,8 +116,9 @@ impl PieceSet{
             if piece_index(pieces, &piece).is_some() {
                 panic!("Intentando añadir una pieza que ya estaba");
             }
+            let ret = pieces.len();
             pieces.push(piece);
-            pieces.len()
+            ret
         }
 
         fn piece_index(pieces: &Vec<Piece> ,piece: &Piece) -> Option<usize> {
@@ -152,10 +153,13 @@ impl PieceSet{
             let new_index = add_piece_or_get_index(&mut pieces,next_piece);
 
             let new_rotations : Vec<Piece> = piece.rotations().to_vec();
+            println!("new_rotations:{:?}", new_rotations);
 
             let new_rotations_indexes = new_rotations.iter().map(|p| add_piece_or_get_index(&mut pieces,*p) );
 
             let new_rotations_indexes_vec : Vec<usize> = new_rotations_indexes.collect();
+            println!("new_rotations_indexec_vec:{:?}", new_rotations_indexes_vec);
+            
 
             for i in 0..new_rotations_indexes_vec.len() {
                 let index = new_rotations_indexes_vec[i];
@@ -164,8 +168,16 @@ impl PieceSet{
                     not_processed_pieces.push( new_rotations[i] );
                 }
             }
-            
-            rotations[new_index] = new_rotations_indexes_vec;
+
+            if new_index == rotations.len(){
+                rotations.push(new_rotations_indexes_vec);
+            }
+            else if new_index < rotations.len(){
+                rotations[new_index] = new_rotations_indexes_vec;
+            }
+            else{
+                panic!("No me esperaba este índice:{}", new_index);
+            }
         }
 
         PieceSet{
