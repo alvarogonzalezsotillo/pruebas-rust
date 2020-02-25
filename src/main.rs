@@ -95,47 +95,21 @@ struct Piece{
     colors : [Color;6],
 }
 
-struct RotablePiece<'a>{
-    pub piece: &'a Piece,
-    rotations :  [&'a Piece;4]
-}
 
+#[derive(Debug)]
 struct PieceSet{
-    pub pieces: Vec<Piece>,
-    rotations : Vec<Vec<usize>>,
+    pieces_to_rotations : std::collections::HashMap<Piece,[Piece;4]>,
 }
 
 impl PieceSet{
 
+    
     pub fn from_piece(piece: Piece) -> PieceSet {
 
-        
 
-        
-        fn add_piece(pieces: &mut Vec<Piece> ,piece: Piece) -> usize {
-            if piece_index(pieces, &piece).is_some() {
-                panic!("Intentando añadir una pieza que ya estaba");
-            }
-            let ret = pieces.len();
-            pieces.push(piece);
-            ret
-        }
-
-        fn piece_index(pieces: &Vec<Piece> ,piece: &Piece) -> Option<usize> {
-            pieces.iter().position(|p| *p == *piece)
-        }
-        
-        fn add_piece_or_get_index(pieces: &mut Vec<Piece>, piece: Piece) -> usize {
-            match piece_index(pieces, &piece){
-                Some(index) => index,
-                None => add_piece(pieces, piece)
-            }
-        }
-
-        let mut pieces : Vec<Piece> = Vec::new();
-        let mut rotations : Vec<Vec<usize>> = Vec::new();
-
+        let mut pieces_to_rotations : std::collections::HashMap<Piece,[Piece;4]> = std::collections::HashMap::new();
         let mut not_processed_pieces : Vec<Piece> = Vec::new();
+        
         not_processed_pieces.push(piece);
 
         loop {
@@ -143,54 +117,39 @@ impl PieceSet{
             if not_processed_pieces.len() == 0 {
                 break;
             }
-
-            let previous_len = pieces.len();
-            println!("previous_len:{}", previous_len);
+            println!("not_processed_pieces:{:?}", not_processed_pieces);
 
             let next_piece = not_processed_pieces.pop().unwrap();
             println!("next_piece:{:?}", next_piece);
 
-            let new_index = add_piece_or_get_index(&mut pieces,next_piece);
+            let rotations : &[Piece;4] = pieces_to_rotations.entry(next_piece).or_insert_with( || next_piece.rotations() );
+            println!("rotations:{:?}", rotations);
 
-            let new_rotations : Vec<Piece> = piece.rotations().to_vec();
-            println!("new_rotations:{:?}", new_rotations);
 
-            let new_rotations_indexes = new_rotations.iter().map(|p| add_piece_or_get_index(&mut pieces,*p) );
-
-            let new_rotations_indexes_vec : Vec<usize> = new_rotations_indexes.collect();
-            println!("new_rotations_indexec_vec:{:?}", new_rotations_indexes_vec);
-            
-
-            for i in 0..new_rotations_indexes_vec.len() {
-                let index = new_rotations_indexes_vec[i];
-                
-                if index >= previous_len {
-                    not_processed_pieces.push( new_rotations[i] );
+            rotations.to_vec().iter().for_each( |p|{
+                if !pieces_to_rotations.contains_key(p){
+                    println!("still not processed:{:?}", p);
+                    
+                    not_processed_pieces.push(*p);
                 }
-            }
-
-            if new_index == rotations.len(){
-                rotations.push(new_rotations_indexes_vec);
-            }
-            else if new_index < rotations.len(){
-                rotations[new_index] = new_rotations_indexes_vec;
-            }
-            else{
-                panic!("No me esperaba este índice:{}", new_index);
-            }
+                else{
+                    println!("already processed:{:?}", p);
+                }
+            });
         }
 
         PieceSet{
-            pieces,
-            rotations
+            pieces_to_rotations,
         }
     }
 
-
-    fn piece_index(&self,piece: &Piece) -> Option<usize> {
-        self.pieces.iter().position(|p| *p == *piece)
+    pub fn pieces(&self) -> Vec<&Piece>{
+        self.pieces_to_rotations.keys().collect()
     }
 
+    pub fn rotate(&self, piece:&Piece, direction: Direction) -> Piece {
+        self.pieces_to_rotations.get(piece).unwrap()[direction as usize]
+    }
 
     
 }
@@ -297,10 +256,19 @@ mod tests {
     #[test]
     fn create_pieceset(){
         let p1 = Piece{colors:[C1,C2,C3,C4,C5,C6]};
-        let pieceSet = PieceSet::from_piece(p1);
-        
+        let piece_set = PieceSet::from_piece(p1);
+        println!("pieceSet:{:?}", piece_set );
+        assert!(piece_set.pieces().len() == 6*4);
     }
 
-    
+    #[test]
+    fn pieceset_rotate(){
+        let p1 = Piece{colors:[C1,C2,C3,C4,C5,C6]};
+        let piece_set = PieceSet::from_piece(p1);
+
+        assert!(p1.rotate(North) == piece_set.rotate(&p1,North) );
+        assert!(p1.rotate(North).rotate(East) == piece_set.rotate( &piece_set.rotate(&p1,North), East ) );
+    }
+
     
 }
