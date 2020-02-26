@@ -97,14 +97,46 @@ struct Piece{
 
 
 #[derive(Debug)]
-struct PieceSet{
+struct PieceSet<'a>{
     pieces_to_rotations : std::collections::HashMap<Piece,[Piece;4]>,
+    cached_pieces : Vec<CachedPiece<'a>>,
 }
 
-impl PieceSet{
+#[derive(Debug)]
+struct CachedPiece<'a>{
+    //piece_set : &'a PieceSet<'a>,
+    piece : std::rc::Rc<std::cell::RefCell<Piece>>,
+    rotations : Vec<&'a CachedPiece<'a>>,
+}
+
+impl <'a> PieceSet<'a>{
+
+    pub  fn compute_cached_pieces(&'a mut self) -> Vec<CachedPiece>{
+        let pieces = self.pieces();
+        let index_of = |piece:&Piece| pieces.iter().position(|p| *p == piece ).unwrap();
+        
+        let mut ret : Vec<CachedPiece> = pieces.iter().map(|p|{
+            CachedPiece{
+                //piece_set: self,
+                piece: p,
+                rotations: Vec::with_capacity(4)
+            }
+        }).collect();
+
+        for direction in 0..4{
+
+            for piece in pieces.iter(){
+                let index = index_of(piece);
+                let index_of_rotation = index_of(&self.pieces_to_rotations.get(piece).unwrap()[direction]);
+                ret[index].rotations.push(&ret[index_of_rotation]);
+            }
+        }
+
+        ret
+    }
 
     
-    pub fn from_piece(piece: Piece) -> PieceSet {
+    pub fn compute_pieces_to_rotations(piece: Piece) -> std::collections::HashMap<Piece,[Piece;4]> {
 
 
         let mut pieces_to_rotations : std::collections::HashMap<Piece,[Piece;4]> = std::collections::HashMap::new();
@@ -138,8 +170,14 @@ impl PieceSet{
             });
         }
 
+        pieces_to_rotations
+    }
+
+    pub fn from_piece(piece: Piece) -> PieceSet<'a> {
+        let pieces_to_rotations = PieceSet::compute_pieces_to_rotations(piece);
         PieceSet{
             pieces_to_rotations,
+            cached_pieces : Vec::new(),
         }
     }
 
