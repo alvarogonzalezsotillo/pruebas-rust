@@ -45,66 +45,12 @@ struct Piece{
 
 use once_cell::sync::OnceCell;
 #[derive(Debug)]
-struct PieceSet<'a>{
+struct PieceSet{
     pieces : Vec<Piece>,
     rotations : Vec<[usize;4]>,
-    rotable_pieces_cache : OnceCell<Vec<RotablePiece<'a>>>,
-    rotable_pieces_ref_cache : OnceCell<Vec<&'a RotablePiece<'a>>>,
 }
 
-
-#[derive(Debug)]
-struct RotablePiece<'a>{
-    piece_set : &'a PieceSet<'a>,
-    piece_index : usize,
-    rotations : [usize;4],
-    rotations_ref : std::cell::UnsafeCell<Vec<&'a RotablePiece<'a>>>,
-    
-}
-
-impl <'a> RotablePiece<'a>{
-    pub fn rotate(&self, direction: Direction) -> &RotablePiece<'a> {
-        let index = self.rotations[direction as usize];
-        &self.piece_set.rotable_pieces()[index]
-    }
-
-    // pub fn rotate2(&mut self, direction: Direction) -> &RotablePiece<'a> {
-    //     if self.rotations_ref.into_inner().len() == 0 {
-    //         let ret = self.rotations.iter().map(|i|{
-    //             self.piece_set.rotable_pieces()[*i]
-    //         }).collect();
-
-    //         *self.rotations_ref.get() = ret;
-    //     }
-
-    //     self.rotations_ref.into_inner()[direction as usize]
-    // }
-
-    pub fn piece(&self) -> &Piece{
-        &self.piece_set.pieces[self.piece_index]
-    }
-}
-
-impl <'a> PieceSet<'a>{
-
-    pub fn rotable_pieces(&'a self) -> &Vec<&RotablePiece> {
-        self.rotable_pieces_cache.get_or_init( || self.compute_rotable_pieces() );
-        self.rotable_pieces_ref_cache.get_or_init( ||{
-           self.rotable_pieces_cache.get().unwrap().iter().map(|p : &RotablePiece | p ).collect()
-        })
-    }
-
-
-    fn compute_rotable_pieces(&'a self) -> Vec<RotablePiece> {
-        (0 .. self.pieces.len()).map(|i|{
-            RotablePiece{
-                piece_set: self,
-                piece_index: i,
-                rotations : self.rotations[i],
-                rotations_ref : std::cell::UnsafeCell::new(Vec::new())
-            }
-        }).collect()
-    }
+impl PieceSet{
     
     fn compute_rotations(pieces: &Vec<Piece>) -> Vec<[usize;4]> {
         let mut ret = Vec::with_capacity(pieces.len());
@@ -115,8 +61,8 @@ impl <'a> PieceSet<'a>{
         for direction in 0..4{
             let direction = Direction::from_u8(direction).unwrap();
             for piece in pieces.iter(){
-                let index = Self::index_of(piece,pieces).unwrap();
-                let index_of_rotation = Self::index_of(&piece.rotate(direction),pieces).unwrap();
+                let index = Self::index_of_piece(piece,pieces).unwrap();
+                let index_of_rotation : usize = Self::index_of_piece(&piece.rotate(direction),pieces).unwrap();
                 ret[index][direction as usize] = index_of_rotation;
             }
         }
@@ -124,8 +70,16 @@ impl <'a> PieceSet<'a>{
         ret
     }
 
-    fn index_of(piece: &Piece, vec: &Vec<Piece>) -> Option<usize> {
+    fn index_of_piece(piece: &Piece, vec: &Vec<Piece>) -> Option<usize> {
         vec.iter().position(|p| *p == *piece )
+    }
+
+    pub fn index_of(&self, piece: &Piece ) -> Option<usize> {
+        Self::index_of_piece(piece,&self.pieces)
+    }
+
+    fn rotate(&self, index: usize, direction: usize ) -> usize{
+        self.rotations[index][direction] 
     }
     
     fn compute_pieces_from(piece: &Piece) -> Vec<Piece> {
@@ -150,10 +104,10 @@ impl <'a> PieceSet<'a>{
 
 
             rotations.to_vec().iter().for_each( |p|{
-                if Self::index_of(p,&ret).is_none(){
+                if Self::index_of_piece(p,&ret).is_none(){
                     println!("still not processed:{:?}", p);
                     ret.push(*p);
-                    if Self::index_of(p,&not_processed_pieces).is_none(){
+                    if Self::index_of_piece(p,&not_processed_pieces).is_none(){
                         println!("still not in not_processed_pieces:{:?}", p);
                         not_processed_pieces.push(*p);
                     }
@@ -173,8 +127,6 @@ impl <'a> PieceSet<'a>{
         PieceSet{
             pieces : pieces,
             rotations : rotations,
-            rotable_pieces_cache: OnceCell::new(),
-            rotable_pieces_ref_cache: OnceCell::new(),
         }
     }
 }
@@ -258,6 +210,7 @@ impl Piece{
 #[cfg(test)]
 mod tests {
 
+    use crate::Direction;
     use crate::Color::*;
     use crate::Direction::*;
     use crate::Piece;
@@ -288,25 +241,26 @@ mod tests {
     }
 
     #[test]
-    fn create_rotable_pieces(){
+    fn create_pieces(){
         let piece_set = PieceSet::from_piece(&Piece{colors:[C1,C2,C3,C4,C5,C6]});
-        let rotable_pieces = piece_set.rotable_pieces();
 
-        let rp1 = rotable_pieces[0];
-        let rp2 = rp1.rotate(East);
-        let rp3 = rp2.rotate(South);
 
-        let p1 = piece_set.pieces[0];
+        
+        let i1 = 0;
+        let i2 = piece_set.rotate(i1,East as usize);
+        let i3 = piece_set.rotate(i2,South as usize);
+
+        let p1 = piece_set.pieces[i1];
         let p2 = p1.rotate(East);
         let p3 = p2.rotate(South);
 
-        assert!( p1 == *rp1.piece());
-        assert!( p2 == *rp2.piece());
-        assert!( p3 == *rp3.piece());
+        assert!( piece_set.pieces[i1] == p1);
+        assert!( piece_set.pieces[i2] == p2);
+        assert!( piece_set.pieces[i3] == p3);
     }
 
     #[test]
-    fn rotable_faster_than_regular_pieces(){
+    fn index_faster_than_regular_pieces(){
 
         fn measure_time<T>( msg: &str, function : &dyn Fn()  -> T ) -> (u128,T) {
             let now = std::time::Instant::now();
@@ -317,27 +271,27 @@ mod tests {
         };
         
         let piece_set = PieceSet::from_piece(&Piece{colors:[C1,C2,C3,C4,C5,C6]});
-        let rotable_pieces = piece_set.rotable_pieces();
-        let times = 1000000;
+        let times : usize= 10000000;
 
         let (millis_regular,final_regular_piece) = measure_time("regular", &||{
             let mut piece = piece_set.pieces[0];
             for i in 0..times{
-                piece = piece.rotate(North);
+                let direction = Direction::from_u8((i%4) as u8).unwrap();
+                piece = piece.rotate(direction);
             }
             piece
         });
 
-        let (millis_rotable,final_rotable_piece) = measure_time("rotable", &||{
-            let mut piece = rotable_pieces[0];
+        let (millis_index,final_index) = measure_time("index", &||{
+            let mut piece = 0;
             for i in 0..times{
-                piece = piece.rotate(North);
+                piece = piece_set.rotate(piece,i%4);
             }
             piece
         });
 
-        assert!( final_regular_piece == *final_rotable_piece.piece() );
-        assert!( millis_regular > millis_rotable );
+        assert!( final_regular_piece == piece_set.pieces[final_index] );
+        assert!( millis_regular < millis_index );
            
         
     }
