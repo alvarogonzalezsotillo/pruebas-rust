@@ -1,10 +1,11 @@
 use std::cmp::Ordering;
+use std::cell::Ref;
 
 use crate::ravioli::O;
 
 
 struct SearchNode<T:State>{
-    to_root : O<SearchNode<T>>,
+    to_root : Option<O<SearchNode<T>>>,
     level : u16,
     state : T
 }
@@ -12,6 +13,23 @@ struct SearchNode<T:State>{
 trait State : Clone{
     fn expand_state(&self) -> Vec<Self>;
     fn is_goal(&self) -> bool;
+}
+
+fn new_child<T:State>(node : &O<SearchNode<T>>, new_state: T) -> SearchNode<T>{
+    SearchNode{
+        to_root: Some(node.clone()),
+        level : node.borrow().level+1,
+        state: new_state
+    }
+}
+
+fn expand_node<T:State>(node: O<SearchNode<T>>) -> Vec<O<SearchNode<T>>>{
+    let childs = node.borrow().state.expand_state();
+    childs.
+        iter().
+        map( |c| new_child(&node, c.clone() ) ).
+        map( |c| O::new(c) ).
+        collect()
 }
 
 
@@ -25,38 +43,42 @@ struct Search<T:State>{
 mod tests{
 
     use crate::search::*;
+
+    impl State for Vec<i32>{
+        fn expand_state(&self) -> Vec<Vec<i32>> {
+            [1,2].
+                iter().
+                map( |i| {
+                    let mut child = self.clone();
+                    child.push(*i);
+                    child
+                }).
+                collect()
+        }
+
+        fn is_goal(&self) -> bool {
+            self.len() == 3
+        }
+    }
+    
     
     #[test]
-    fn viability(){
-        impl State for Vec<i32>{
-            fn expand_state(&self) -> Vec<Vec<i32>> {
-                [1,2].
-                    iter().
-                    map( |i| {
-                        let mut child = self.clone();
-                        child.push(*i);
-                        child
-                    }).
-                    collect()
-            }
+    fn expand(){
+        let vec = vec![0];
+        let children = vec.expand_state();
+        println!("{:?}", children );
+        assert!(children == vec![ vec![0,1], vec![0,2] ]);
+    }
 
-            fn is_goal(&self) -> bool {
-                self.len() == 3
-            }
-        }
+    #[test]
+    fn is_goal(){
+        assert!( ! vec![0].is_goal() );
+        assert!( vec![1,2,3].is_goal() );
     }
 }
 
 
 /*
-pub fn new_child(node : O<SearchNode<T>>, new_child: T) -> O<SearchNode<T>>{
-    SearchNode{
-        search : self.search.clone(),
-        to_root: Some(&self),
-        level : self.level+1,
-        data: new_child
-    }
-}
 
 
 impl <'a,T:PartialEq + Copy> PartialEq for  SearchNode<'a,T>{
