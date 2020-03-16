@@ -8,6 +8,7 @@ use std::cell::RefMut;
 
 type OImpl<T> = Rc<RefCell<T>>;
 
+#[derive(Debug)]
 pub struct O<T>{
     rc : OImpl<T>
 }

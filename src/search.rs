@@ -1,13 +1,35 @@
 use std::cmp::Ordering;
 use std::cell::Ref;
+use std::fmt::{Display, Formatter, Result};
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 use crate::ravioli::O;
 
-
+#[derive(Debug)]
 struct SearchNode<T:State>{
     to_root : Option<O<SearchNode<T>>>,
     level : u16,
     state : T
+}
+
+
+impl <T:State + Display> Display for SearchNode<T>{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{} - {}", self.level, self.state )
+    }
+}
+
+
+
+impl <T:State> SearchNode<T>{
+    fn new_root(state: T) -> Self{
+        SearchNode{
+            to_root : None,
+            level : 0,
+            state : state
+        }
+    }
 }
 
 trait State : Clone{
@@ -23,7 +45,22 @@ fn new_child<T:State>(node : &O<SearchNode<T>>, new_state: T) -> SearchNode<T>{
     }
 }
 
-fn expand_node<T:State>(node: O<SearchNode<T>>) -> Vec<O<SearchNode<T>>>{
+fn root_path<T:State>(node: &O<SearchNode<T>> ) -> Vec<O<SearchNode<T>>>{
+    let mut ret : Vec<O<SearchNode<T>>> = Vec::new();
+    let mut option : Option<O<SearchNode<T>>> = Some(node.clone());
+        
+    while option.is_some() {
+        let o = option.unwrap();
+        option = o.borrow().to_root.clone();
+        ret.push( o.clone() );
+    }
+
+    ret
+    
+}
+
+
+fn expand_node<T:State>(node: &O<SearchNode<T>>) -> Vec<O<SearchNode<T>>>{
     let childs = node.borrow().state.expand_state();
     childs.
         iter().
@@ -46,7 +83,7 @@ mod tests{
 
     impl State for Vec<i32>{
         fn expand_state(&self) -> Vec<Vec<i32>> {
-            [1,2].
+            [0,1,2].
                 iter().
                 map( |i| {
                     let mut child = self.clone();
@@ -60,6 +97,15 @@ mod tests{
             self.len() == 3
         }
     }
+
+    impl Display for O<SearchNode<Vec<i32>>>{
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            let v : &Vec<i32> = &self.borrow().state;
+            let v : Vec<String> = v.iter().map(|i| i.to_string() ).collect();
+            write!(f, "O({})", v.join("-") )
+        }
+    }
+
     
     
     #[test]
@@ -67,9 +113,43 @@ mod tests{
         let vec = vec![0];
         let children = vec.expand_state();
         println!("{:?}", children );
-        assert!(children == vec![ vec![0,1], vec![0,2] ]);
+        assert!(children == vec![ vec![0,0], vec![0,1], vec![0,2] ]);
     }
 
+    #[test]
+    fn expand_node(){
+        let vec = vec![0];
+        let node = O::new(SearchNode::new_root(vec.clone()));
+        let children = crate::search::expand_node(&node);
+
+        println!("{}", children.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
+        assert!( children.len() == 3 );
+
+        let children = crate::search::expand_node(&children[0]);
+        println!("{}", children.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
+        assert!( children.len() == 3 );
+    }
+    
+
+    #[test]
+    fn root_path(){
+        let vec = vec![0];
+        let node = O::new(SearchNode::new_root(vec));
+        let children = crate::search::expand_node(&node);
+        let children = crate::search::expand_node(&children[0]);
+        let children = crate::search::expand_node(&children[0]);
+
+        let root_path = crate::search::root_path(&children[0]);
+        
+        println!("{}", root_path.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
+        assert!( root_path.len() == 4 );
+
+        let root : Ref<SearchNode<Vec<i32>>> = root_path[root_path.len()-1].borrow();
+
+        assert!( std::ptr::eq(root.deref(), node.borrow().deref() ) );
+    }
+
+    
     #[test]
     fn is_goal(){
         assert!( ! vec![0].is_goal() );
