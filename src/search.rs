@@ -1,23 +1,63 @@
 use std::cmp::Ordering;
 
+use crate::ravioli::O;
 
-struct SearchNode<'a,T:Copy>{
-    search : &'a Search<'a,T>,
-    to_root : Option<&'a SearchNode<'a,T>>,
+
+struct SearchNode<T:State>{
+    to_root : O<SearchNode<T>>,
     level : u16,
-    data : T
+    state : T
 }
 
-impl <'a,T:Copy> SearchNode<'a,T>{
-    pub fn new_child(&'a self, new_child: T) -> SearchNode<'a,T>{
-        SearchNode{
-            search : self.search,
-            to_root: Some(&self),
-            level : self.level+1,
-            data: new_child
+trait State : Clone{
+    fn expand_state(&self) -> Vec<Self>;
+    fn is_goal(&self) -> bool;
+}
+
+
+struct Search<T:State>{
+    root : T,
+    all_nodes : std::collections::HashMap<T,O<SearchNode<T>>>,
+    not_expanded_nodes : std::collections::BTreeSet<O<SearchNode<T>>>,
+}
+
+#[cfg(test)]
+mod tests{
+
+    use crate::search::*;
+    
+    #[test]
+    fn viability(){
+        impl State for Vec<i32>{
+            fn expand_state(&self) -> Vec<Vec<i32>> {
+                [1,2].
+                    iter().
+                    map( |i| {
+                        let mut child = self.clone();
+                        child.push(*i);
+                        child
+                    }).
+                    collect()
+            }
+
+            fn is_goal(&self) -> bool {
+                self.len() == 3
+            }
         }
     }
 }
+
+
+/*
+pub fn new_child(node : O<SearchNode<T>>, new_child: T) -> O<SearchNode<T>>{
+    SearchNode{
+        search : self.search.clone(),
+        to_root: Some(&self),
+        level : self.level+1,
+        data: new_child
+    }
+}
+
 
 impl <'a,T:PartialEq + Copy> PartialEq for  SearchNode<'a,T>{
     fn eq(&self, other: &Self) -> bool {
@@ -43,18 +83,6 @@ impl <'a,T:Copy + PartialEq> PartialOrd for SearchNode<'a,T> {
 }
 
 
-type NodeExpander<T> = dyn Fn(&T) -> Vec<T>;
-type NodeChecker<T> = dyn Fn(&T) -> bool;
-
-
-
-struct Search<'a,T:Copy>{
-    root : T,
-    all_nodes : std::collections::HashMap<T,O<SearchNode<'a,T>>>,
-    not_expanded_nodes : std::collections::BTreeSet<O<SearchNode<'a,T>>>,
-    node_expander : &'a NodeExpander<T>,
-    node_checker : &'a NodeChecker<T>,
-}
 
 
 impl <'a, T:Copy + Eq + std::hash::Hash> Search<'a,T>{
@@ -123,3 +151,4 @@ impl <'a, T:Copy + Eq + std::hash::Hash> Search<'a,T>{
         (self.not_expanded_nodes.len()>0,found_solution)
     }
 }
+*/

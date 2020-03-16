@@ -1,28 +1,32 @@
 use std::ops::Deref;
 
 use std::cmp::*;
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::cell::Ref;
+use std::cell::RefMut;
 
+type OImpl<T> = Rc<RefCell<T>>;
 
-struct O<T>{
-    rc : std::rc::Rc<std::cell::RefCell<T>>
+pub struct O<T>{
+    rc : OImpl<T>
 }
 
 
 impl <T> O<T>{
     pub fn new(data: T) -> Self {
         O{
-            rc : std::rc::Rc::new(std::cell::RefCell::new(data))
+            rc : Rc::new(RefCell::new(data))
         }
     }
 
-    pub fn borrow(&self) -> std::cell::Ref<T>{
+    pub fn borrow(&self) -> Ref<T>{
         self.rc.borrow()
     }
 
-    pub fn borrow_mut(&self) -> std::cell::RefMut<T>{
+    pub fn borrow_mut(&self) -> RefMut<T>{
         self.rc.borrow_mut()
     }
-
 }
 
 
@@ -53,9 +57,9 @@ impl <T:PartialEq> PartialEq for  O<T>{
 impl <T> Clone for O<T>{
     fn clone(&self) -> Self{
         O{
-            rc: std::rc::Rc::clone( &self.rc )
+            rc: Rc::clone( &self.rc )
         }
-   } 
+    } 
 }
 
 
@@ -78,6 +82,36 @@ mod tests {
         *o2.borrow_mut() = 2;
 
         assert!( *o1.borrow() == 2 );
+    }
+
+
+    static mut UN_STRUCT_COUNTER : u32 = 0;
+    #[test]
+    fn un_struct(){
+        struct A{
+        }
+
+        impl Clone for A{
+            fn clone(&self) -> Self{
+                unsafe{
+                    UN_STRUCT_COUNTER += 1;
+                }
+                A{}
+            }
+        }
+
+        let a = A{};
+        assert!( unsafe{UN_STRUCT_COUNTER} == 0);
+
+        let b = a.clone();
+        assert!( unsafe{UN_STRUCT_COUNTER} == 1);
+
+        let c = b.clone();
+        assert!( unsafe{UN_STRUCT_COUNTER} == 2);
+
+        let o1a = O::new(a);
+        let o2a = o1a.clone();
+        assert!( unsafe{UN_STRUCT_COUNTER} == 2);
     }
 
 

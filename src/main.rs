@@ -3,7 +3,7 @@ use std::env;
 
 pub mod crossteaser;
 pub mod ravioli;
-//b mod search;
+pub mod search;
 
 
 
