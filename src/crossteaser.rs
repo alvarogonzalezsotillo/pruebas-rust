@@ -228,6 +228,7 @@ impl Piece{
     }
 }
 
+#[derive(Copy,Clone)]
 struct Board<'a>{
     piece_set : &'a PieceSet,
     pieces : [[usize;3];3],

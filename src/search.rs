@@ -1,61 +1,6 @@
-struct O<T>{
-    rc : std::rc::Rc<std::cell::RefCell<T>>
-}
+use std::cmp::Ordering;
 
 
-impl <T> O<T>{
-    pub fn new(data: T) -> Self {
-        O{
-            rc : std::rc::Rc::new(std::cell::RefCell::new(data))
-        }
-    }
-
-    pub fn borrow(&self) -> std::cell::Ref<T>{
-        self.rc.borrow()
-    }
-
-    pub fn borrow_mut(&self) -> std::cell::RefMut<T>{
-        self.rc.borrow_mut()
-    }
-
-}
-
-
-impl <T:PartialEq> Eq for O<T>{
-}
-
-impl <T:PartialEq + Ord> PartialOrd for O<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-
-impl <T:Ord> Ord for O<T>{
-    fn cmp(&self, other: &Self) -> Ordering{
-        self.borrow().cmp(&other.borrow())
-    }
-}
-
-
-use std::ops::Deref;
-
-impl <T:PartialEq> PartialEq for  O<T>{
-    fn eq(&self, other: &Self) -> bool {
-        self.borrow().deref() == other.borrow().deref()
-    }
-}
-
-impl <T> Clone for O<T>{
-    fn clone(&self) -> Self{
-        O{
-            rc: std::rc::Rc::clone( &self.rc )
-        }
-   } 
-}
-
-
-// #[derive(PartialOrd,PartialEq)]
 struct SearchNode<'a,T:Copy>{
     search : &'a Search<'a,T>,
     to_root : Option<&'a SearchNode<'a,T>>,
@@ -89,7 +34,6 @@ impl <'a,T:PartialEq + Copy> Ord for  SearchNode<'a,T>{
     }
 }
 
-use std::cmp::Ordering;
 
 impl <'a,T:Copy + PartialEq> PartialOrd for SearchNode<'a,T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
