@@ -76,6 +76,36 @@ struct Search<T:State>{
     not_expanded_nodes : std::collections::BTreeSet<O<SearchNode<T>>>,
 }
 
+fn deep_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T>>>{
+
+    fn search<T:State + std::fmt::Debug>( current: &O<SearchNode<T>> ) -> Option<O<SearchNode<T>>> {
+
+        
+        let state : &T = &current.borrow().state;
+
+        println!("level: {} state: {:?}", current.borrow().level, state );
+
+        
+        if state.is_goal() {
+            return Some(current.clone());
+        }
+
+        let children = expand_node(current);
+        for child in children{
+            let ret = search(&child);
+            if ret.is_some(){
+                return ret;
+            }
+        };
+        None
+    }
+    
+    let root = SearchNode::new_root(root);
+    search(&O::new(root))
+}
+
+                                                
+
 #[cfg(test)]
 mod tests{
 
@@ -86,7 +116,7 @@ mod tests{
 
             if self.len() < 4 {
                 
-                [0,1,2].
+                [0,1,2,3].
                     iter().
                     map( |i| {
                         let mut child = self.clone();
@@ -105,12 +135,21 @@ mod tests{
         }
     }
 
+
     impl Display for O<SearchNode<Vec<i32>>>{
         fn fmt(&self, f: &mut Formatter<'_>) -> Result {
             let v : &Vec<i32> = &self.borrow().state;
             let v : Vec<String> = v.iter().map(|i| i.to_string() ).collect();
             write!(f, "O({})", v.join("-") )
         }
+    }
+
+    #[test]
+    fn deep_first_search(){
+        let root = vec![];
+        let goal = crate::search::deep_first_search(root);
+
+        assert!( goal.is_some() );
     }
 
     
@@ -120,7 +159,7 @@ mod tests{
         let vec = vec![0];
         let children = vec.expand_state();
         println!("{:?}", children );
-        assert!(children == vec![ vec![0,0], vec![0,1], vec![0,2] ]);
+        assert!(children == vec![ vec![0,0], vec![0,1], vec![0,2], vec![0,3] ]);
     }
 
     #[test]
@@ -130,11 +169,11 @@ mod tests{
         let children = crate::search::expand_node(&node);
 
         println!("{}", children.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
-        assert!( children.len() == 3 );
+        assert!( children.len() == 4 );
 
         let children = crate::search::expand_node(&children[0]);
         println!("{}", children.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
-        assert!( children.len() == 3 );
+        assert!( children.len() == 4 );
     }
     
 
