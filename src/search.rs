@@ -83,18 +83,25 @@ mod tests{
 
     impl State for Vec<i32>{
         fn expand_state(&self) -> Vec<Vec<i32>> {
-            [0,1,2].
-                iter().
-                map( |i| {
-                    let mut child = self.clone();
-                    child.push(*i);
-                    child
-                }).
-                collect()
+
+            if self.len() < 4 {
+                
+                [0,1,2].
+                    iter().
+                    map( |i| {
+                        let mut child = self.clone();
+                        child.push(*i);
+                        child
+                    }).
+                    collect()
+            }
+            else{
+                Vec::new()
+            }
         }
 
         fn is_goal(&self) -> bool {
-            self.len() == 3
+            *self == vec![0 as i32,1 as i32,2 as i32,3 as i32]
         }
     }
 
@@ -153,7 +160,7 @@ mod tests{
     #[test]
     fn is_goal(){
         assert!( ! vec![0].is_goal() );
-        assert!( vec![1,2,3].is_goal() );
+        assert!( vec![0,1,2,3].is_goal() );
     }
 }
 
