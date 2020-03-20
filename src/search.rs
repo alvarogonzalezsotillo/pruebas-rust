@@ -21,7 +21,6 @@ impl <T:State + Display> Display for SearchNode<T>{
 }
 
 
-
 impl <T:State> SearchNode<T>{
     fn new_root(state: T) -> Self{
         SearchNode{
@@ -57,6 +56,11 @@ fn root_path<T:State>(node: &O<SearchNode<T>> ) -> Vec<O<SearchNode<T>>>{
 
     ret
     
+}
+
+fn root_path_state<T:State>(node: &O<SearchNode<T>>) -> Vec<T> {
+    let path = root_path(node);
+    path.iter().map( |o| o.borrow().state.clone() ).collect()
 }
 
 
@@ -104,7 +108,39 @@ fn deep_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T
     search(&O::new(root))
 }
 
-                                                
+
+
+fn breadth_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T>>>{
+
+    use std::collections::VecDeque;
+    
+    let mut queue : VecDeque<O<SearchNode<T>>> = VecDeque::new();
+    
+    fn search<T:State + std::fmt::Debug>( queue: &mut VecDeque<O<SearchNode<T>>> ) -> Option<O<SearchNode<T>>> {
+
+        
+        while let Some(current_node) = queue.pop_back() {
+            let state = &current_node.borrow().state;
+            println!("level: {} state: {:?}", current_node.borrow().level, state );
+
+            if state.is_goal() {
+                return Some(current_node.clone());
+            }
+
+            let children = expand_node(&current_node);
+            for child in children {
+                queue.push_front(child)
+            }
+        }
+        None
+    }
+    
+    let root = SearchNode::new_root(root);
+    queue.push_back(O::new(root));
+    search(&mut queue)
+}
+
+
 
 #[cfg(test)]
 mod tests{
@@ -145,17 +181,35 @@ mod tests{
     }
 
     #[test]
-    fn deep_first_search(){
+    fn deep_first_search_test(){
         let root = vec![];
-        let goal = crate::search::deep_first_search(root);
+        let goal = deep_first_search(root.clone());
 
         assert!( goal.is_some() );
+        let goal = goal.unwrap();
+        let path = root_path_state(&goal);
+        println!( "{:?}", path );
+        assert!( path[path.len()-1] == root )
+        
+    }
+
+
+    #[test]
+    fn breadth_first_search_test(){
+        let root = vec![];
+        let goal = breadth_first_search(root.clone());
+
+        assert!( goal.is_some() );
+        
+        let goal = goal.unwrap();
+        let path = root_path_state(&goal);
+        println!( "{:?}", path );
+        assert!( path[path.len()-1] == root )
     }
 
     
-    
     #[test]
-    fn expand(){
+    fn expand_test(){
         let vec = vec![0];
         let children = vec.expand_state();
         println!("{:?}", children );
@@ -163,29 +217,29 @@ mod tests{
     }
 
     #[test]
-    fn expand_node(){
+    fn expand_node_test(){
         let vec = vec![0];
         let node = O::new(SearchNode::new_root(vec.clone()));
-        let children = crate::search::expand_node(&node);
+        let children = expand_node(&node);
 
         println!("{}", children.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
         assert!( children.len() == 4 );
 
-        let children = crate::search::expand_node(&children[0]);
+        let children = expand_node(&children[0]);
         println!("{}", children.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
         assert!( children.len() == 4 );
     }
     
 
     #[test]
-    fn root_path(){
+    fn root_path_test(){
         let vec = vec![0];
         let node = O::new(SearchNode::new_root(vec));
-        let children = crate::search::expand_node(&node);
-        let children = crate::search::expand_node(&children[0]);
-        let children = crate::search::expand_node(&children[0]);
+        let children = expand_node(&node);
+        let children = expand_node(&children[0]);
+        let children = expand_node(&children[0]);
 
-        let root_path = crate::search::root_path(&children[0]);
+        let root_path = root_path(&children[0]);
         
         println!("{}", root_path.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
         assert!( root_path.len() == 4 );
@@ -197,7 +251,7 @@ mod tests{
 
     
     #[test]
-    fn is_goal(){
+    fn is_goal_test(){
         assert!( ! vec![0].is_goal() );
         assert!( vec![0,1,2,3].is_goal() );
     }
