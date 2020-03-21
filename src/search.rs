@@ -1,15 +1,15 @@
-use std::cmp::Ordering;
 use std::cell::Ref;
 use std::fmt::{Display, Formatter, Result};
 use std::ops::Deref;
-use std::ops::DerefMut;
 
 use crate::ravioli::O;
 
+mod astar;
+
 #[derive(Debug)]
-struct SearchNode<T:State>{
+pub struct SearchNode<T:State>{
     to_root : Option<O<SearchNode<T>>>,
-    level : u16,
+    level : u64,
     state : T
 }
 
@@ -31,12 +31,12 @@ impl <T:State> SearchNode<T>{
     }
 }
 
-trait State : Clone{
+pub trait State : Clone{
     fn expand_state(&self) -> Vec<Self>;
     fn is_goal(&self) -> bool;
 }
 
-fn new_child<T:State>(node : &O<SearchNode<T>>, new_state: T) -> SearchNode<T>{
+pub fn new_child<T:State>(node : &O<SearchNode<T>>, new_state: T) -> SearchNode<T>{
     SearchNode{
         to_root: Some(node.clone()),
         level : node.borrow().level+1,
@@ -44,10 +44,11 @@ fn new_child<T:State>(node : &O<SearchNode<T>>, new_state: T) -> SearchNode<T>{
     }
 }
 
-fn root_path<T:State>(node: &O<SearchNode<T>> ) -> Vec<O<SearchNode<T>>>{
+
+pub fn root_path<T:State>(node: &O<SearchNode<T>> ) -> Vec<O<SearchNode<T>>>{
     let mut ret : Vec<O<SearchNode<T>>> = Vec::new();
     let mut option : Option<O<SearchNode<T>>> = Some(node.clone());
-        
+    
     while option.is_some() {
         let o = option.unwrap();
         option = o.borrow().to_root.clone();
@@ -55,10 +56,11 @@ fn root_path<T:State>(node: &O<SearchNode<T>> ) -> Vec<O<SearchNode<T>>>{
     }
 
     ret
-    
+        
 }
 
-fn root_path_state<T:State>(node: &O<SearchNode<T>>) -> Vec<T> {
+
+pub fn root_path_state<T:State>(node: &O<SearchNode<T>>) -> Vec<T> {
     let path = root_path(node);
     path.iter().map( |o| o.borrow().state.clone() ).collect()
 }
@@ -80,7 +82,7 @@ struct Search<T:State>{
     not_expanded_nodes : std::collections::BTreeSet<O<SearchNode<T>>>,
 }
 
-fn deep_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T>>>{
+pub fn deep_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T>>>{
 
     fn search<T:State + std::fmt::Debug>( current: &O<SearchNode<T>> ) -> Option<O<SearchNode<T>>> {
 
@@ -110,7 +112,7 @@ fn deep_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T
 
 
 
-fn breadth_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T>>>{
+pub fn breadth_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T>>>{
 
     use std::collections::VecDeque;
     
@@ -256,6 +258,7 @@ mod tests{
         assert!( vec![0,1,2,3].is_goal() );
     }
 }
+
 
 
 /*

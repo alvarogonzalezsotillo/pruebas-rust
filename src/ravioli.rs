@@ -34,24 +34,21 @@ impl <T> O<T>{
 impl <T:PartialEq> Eq for O<T>{
 }
 
+impl <T:PartialEq> PartialEq for  O<T>{
+    fn eq(&self, other: &Self) -> bool {
+        self.borrow().deref() == other.borrow().deref()
+    }
+}
+
 impl <T:PartialEq + Ord> PartialOrd for O<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-
 impl <T:Ord> Ord for O<T>{
     fn cmp(&self, other: &Self) -> Ordering{
         self.borrow().cmp(&other.borrow())
-    }
-}
-
-
-
-impl <T:PartialEq> PartialEq for  O<T>{
-    fn eq(&self, other: &Self) -> bool {
-        self.borrow().deref() == other.borrow().deref()
     }
 }
 
