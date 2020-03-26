@@ -12,13 +12,17 @@ use crate::ravioli::O;
 
 use crate::search::*;
 
+fn simple_hash_fn<T:Hash>(object : &T) -> u64{
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    object.hash(&mut hasher);
+    hasher.finish()
+}
+
 
 pub trait Heuristic : Hash + PartialEq + Eq + Display + Debug{
     fn heuristic(&self) -> u64;
     fn simple_hash(&self) -> u64{
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        self.hash(&mut hasher);
-        hasher.finish()
+        simple_hash_fn(&self)
     }
 }
 
@@ -63,13 +67,17 @@ fn pop<T:Ord + Clone>( set: &mut BTreeSet<T> ) -> Option<T> {
 }
 
 
-pub fn a_star_search<T:State + Heuristic>(root:T) -> Option<O<SearchNode<T>>>{
+pub fn a_star_search<T:State + Heuristic>(root:T) -> Option<O<SearchNode<T>>>
+{
+
 
     let root_node = O::new(SearchNode::new_root(root));
     if root_node.borrow().state.is_goal() {
         return Some(root_node);
     }
-    
+
+    // https://stackoverflow.com/questions/34028324/how-do-i-use-a-custom-comparator-function-with-btreeset
+    // https://stackoverflow.com/questions/35786878/how-can-i-implement-ord-when-the-comparison-depends-on-data-not-part-of-the-comp/35788530#35788530
     let mut not_expanded_nodes : BTreeSet<O<SearchNode<T>>> = BTreeSet::new();
     let mut expanded_nodes : HashMap<T,O<SearchNode<T>>> = HashMap::new();
     not_expanded_nodes.insert( root_node );
@@ -96,7 +104,7 @@ pub fn a_star_search<T:State + Heuristic>(root:T) -> Option<O<SearchNode<T>>>{
             // HAS BEEN ALREADY EXPANDED?
             if let Some(already_expanded) = expanded_nodes.get(&child.borrow().state){
                 if already_expanded.borrow().level > child.borrow().level {
-                    assert!(false);
+                    panic!("Hay que reenganchar el nodo existente con otro padre, se llegó por un sitio más corto");
                 }
             }
 
