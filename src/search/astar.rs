@@ -54,12 +54,13 @@ fn pop<T:Ord + Clone>( set: &mut BTreeSet<T> ) -> Option<T> {
 }
 
 
-pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data : &'a dyn Search<T>) -> Option<O<SearchNode<'a,T>>>
+pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data : &'a dyn SearchInfo<T>) -> Option<O<SearchNode<'a,T>>>
 {
 
 
     let root_node = O::new(SearchNode::new_root(root,search_data));
-    if root_node.borrow().state.is_goal() {
+    
+    if search_data.is_goal(&root_node.borrow().state) {
         return Some(root_node);
     }
 
@@ -73,8 +74,9 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
         let state = &current.borrow().state;
 
         println!("Expanding node: {}  heuristic:{}", &current.borrow(), current.borrow().search.heuristic(state) );
+
         
-        assert!( !state.is_goal() ); // Se debe detectar antes de meter en not_expanded_nodes
+        assert!( !search_data.is_goal(&state) ); // Se debe detectar antes de meter en not_expanded_nodes
         let children = expand_node(&current);
         expanded_nodes.insert( state.clone(), current.clone() );
 
@@ -84,7 +86,7 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
             
 
             // IS GOAL?
-            if child.borrow().state.is_goal(){
+            if search_data.is_goal(&child.borrow().state) {
                 return Some(child);
             }
 
@@ -127,15 +129,6 @@ mod tests{
     }
     
     impl State for Vector{
-        fn expand_state(&self) -> Vec<Self> {
-            vec![
-                Vector(self.0+1,self.1  ),
-                Vector(self.0  ,self.1+1)
-            ]
-        }
-        fn is_goal(&self) -> bool {
-            self.0 == 3 && self.1 == 4
-        }
     }
 
     
@@ -146,14 +139,25 @@ mod tests{
         goal: Vector
     }
 
-    impl Search<Vector> for SearchToGoal{
+    impl SearchInfo<Vector> for SearchToGoal{
         fn heuristic(&self,state: &Vector) -> u64{
-            println!("*****************************************");
+            println!("Heuristica para {} con objetivo {}", state, self.goal );
             let dx = state.0 as i64 - self.goal.0 as i64;
             let dy = state.1 as i64 - self.goal.1 as i64;
             let sqr = (dx*dx + dy*dy) as f64;
             sqr.sqrt() as u64
         }
+
+        fn expand_state(&self,state: &Vector) -> Vec<Vector> {
+            vec![
+                Vector(state.0+1,state.1  ),
+                Vector(state.0  ,state.1+1)
+            ]
+        }
+        fn is_goal(&self,state: &Vector) -> bool {
+            state.0 == self.goal.0 && state.1 == self.goal.1
+        }
+        
     }
 
 

@@ -14,11 +14,12 @@ fn simple_hash<T:Hash>(object : &T) -> u64{
     hasher.finish()
 }
 
-pub trait Search<T:State>: std::fmt::Debug{
+pub trait SearchInfo<T:State>: std::fmt::Debug{
     fn heuristic(&self,state: &T) -> u64{
-        println!("Heurística por defecto para hash: {}", simple_hash(state) );
         0
     }
+    fn expand_state(&self,state:&T) -> Vec<T>;
+    fn is_goal(&self,state:&T) -> bool;
 }
 
 #[derive(Debug)]
@@ -26,7 +27,7 @@ pub struct SearchNode<'a,T:State>{
     to_root : Option<O<SearchNode<'a, T>>>,
     level : u64,
     state : T,
-    search : &'a dyn Search<T>
+    search : &'a dyn SearchInfo<T>
 }
 
 
@@ -38,7 +39,7 @@ impl <'a,T:State + Display> Display for SearchNode<'a,T>{
 
 
 impl <'a,T:State> SearchNode<'a,T>{
-    fn new_root(state: T, search: &'a dyn Search<T>) -> Self{
+    fn new_root(state: T, search: &'a dyn SearchInfo<T>) -> Self{
         SearchNode{
             to_root : None,
             level : 0,
@@ -49,8 +50,6 @@ impl <'a,T:State> SearchNode<'a,T>{
 }
 
 pub trait State : Hash + Clone{
-    fn expand_state(&self) -> Vec<Self>;
-    fn is_goal(&self) -> bool;
 }
 
 pub fn new_child<'a,T:State>(node : &O<SearchNode<'a,T>>, new_state: T) -> SearchNode<'a,T>{
@@ -86,7 +85,8 @@ pub fn root_path_state<'a,T:State>(node: &'a O<SearchNode<'a,T>>) -> Vec<T> {
 
 
 fn expand_node<'a,T:State>(node: &O<SearchNode<'a,T>>) -> Vec<O<SearchNode<'a,T>>>{
-    let childs = node.borrow().state.expand_state();
+    let search_data = node.borrow().search;
+    let childs = search_data.expand_state(&node.borrow().state);
     childs.
         iter().
         map( |c| new_child(&node, c.clone() ) ).
@@ -96,7 +96,7 @@ fn expand_node<'a,T:State>(node: &O<SearchNode<'a,T>>) -> Vec<O<SearchNode<'a,T>
 
 
 
-pub fn deep_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a dyn Search<T>) -> Option<O<SearchNode<'a,T>>>{
+pub fn deep_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a dyn SearchInfo<T>) -> Option<O<SearchNode<'a,T>>>{
 
     fn search<'a,T:State + std::fmt::Debug>( current: &O<SearchNode<'a,T>> ) -> Option<O<SearchNode<'a,T>>> {
 
@@ -105,8 +105,8 @@ pub fn deep_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a
 
         println!("level: {} state: {:?}", current.borrow().level, state );
 
-        
-        if state.is_goal() {
+        let search_data = current.borrow().search;
+        if search_data.is_goal(state) {
             return Some(current.clone());
         }
 
@@ -126,7 +126,7 @@ pub fn deep_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a
 
 
 
-pub fn breadth_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a dyn Search<T>) -> Option<O<SearchNode<'a,T>>>{
+pub fn breadth_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a dyn SearchInfo<T>) -> Option<O<SearchNode<'a,T>>>{
 
     use std::collections::VecDeque;
     
@@ -139,7 +139,8 @@ pub fn breadth_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : 
             let state = &current_node.borrow().state;
             println!("level: {} state: {:?}", current_node.borrow().level, state );
 
-            if state.is_goal() {
+            let search_data = current_node.borrow().search;
+            if search_data.is_goal(state) {
                 return Some(current_node.clone());
             }
 
@@ -164,27 +165,6 @@ mod tests{
     use crate::search::*;
 
     impl State for Vec<i32>{
-        fn expand_state(&self) -> Vec<Vec<i32>> {
-
-            if self.len() < 4 {
-                
-                [0,1,2,3].
-                    iter().
-                    map( |i| {
-                        let mut child = self.clone();
-                        child.push(*i);
-                        child
-                    }).
-                    collect()
-            }
-            else{
-                Vec::new()
-            }
-        }
-
-        fn is_goal(&self) -> bool {
-            *self == vec![0 as i32,1 as i32,2 as i32,3 as i32]
-        }
     }
 
 
@@ -200,7 +180,28 @@ mod tests{
     struct DummySearch{
     }
 
-    impl <T:State> Search<T> for DummySearch{
+    impl SearchInfo<Vec<i32>> for DummySearch{
+        fn expand_state(&self,state: &Vec<i32>) -> Vec<Vec<i32>> {
+
+            if state.len() < 4 {
+                
+                [0,1,2,3].
+                    iter().
+                    map( |i| {
+                        let mut child = state.clone();
+                        child.push(*i);
+                        child
+                    }).
+                    collect()
+            }
+            else{
+                Vec::new()
+            }
+        }
+
+        fn is_goal(&self, state:&Vec<i32>) -> bool {
+            *state == vec![0 as i32,1 as i32,2 as i32,3 as i32]
+        }
     }
 
     #[test]
@@ -234,7 +235,7 @@ mod tests{
     #[test]
     fn expand_test(){
         let vec = vec![0];
-        let children = vec.expand_state();
+        let children = DummySearch{}.expand_state(&vec);
         println!("{:?}", children );
         assert!(children == vec![ vec![0,0], vec![0,1], vec![0,2], vec![0,3] ]);
     }
@@ -275,8 +276,10 @@ mod tests{
     
     #[test]
     fn is_goal_test(){
-        assert!( ! vec![0].is_goal() );
-        assert!( vec![0,1,2,3].is_goal() );
+        let search = DummySearch{};
+        assert!( ! search.is_goal( & vec![0] ) );
+        assert!( search.is_goal( & vec![0,1,2,3] ) );
+
     }
 }
 
