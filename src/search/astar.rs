@@ -12,41 +12,28 @@ use crate::ravioli::O;
 
 use crate::search::*;
 
-fn simple_hash_fn<T:Hash>(object : &T) -> u64{
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    object.hash(&mut hasher);
-    hasher.finish()
+impl <'a,T:State + PartialEq> Eq for SearchNode<'a,T>{
 }
 
-
-pub trait Heuristic : Hash + PartialEq + Eq + Display + Debug{
-    fn heuristic(&self) -> u64;
-    fn simple_hash(&self) -> u64{
-        simple_hash_fn(&self)
-    }
-}
-
-impl <T:State + PartialEq> Eq for SearchNode<T>{
-}
-
-impl <T:State + PartialEq> PartialEq for  SearchNode<T>{
+impl <'a,T:State + PartialEq> PartialEq for  SearchNode<'a,T>{
     fn eq(&self, other: &Self) -> bool {
         self.state == other.state
     }
 }
 
-impl <T:State + Heuristic> Ord for SearchNode<T>{
+impl <'a,T:State + PartialEq> Ord for SearchNode<'a,T>{
     fn cmp(&self, other: &Self) -> Ordering{
-        let mine = self.level + self.state.heuristic();
-        let their = other.level + other.state.heuristic();
+        let search_data = self.search;
+        let mine = self.level + search_data.heuristic(&self.state);
+        let their = other.level + search_data.heuristic(&other.state);
         match mine.cmp(&their){
-            Equal => self.state.simple_hash().cmp(&other.state.simple_hash()),
+            Equal => simple_hash(&self.state).cmp(&simple_hash(&other.state)),
             others => others    
         }
-     }
+    }
 }
 
-impl <T:State + Heuristic> PartialOrd for SearchNode<T> {
+impl <'a,T:State + PartialEq> PartialOrd for SearchNode<'a,T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -67,12 +54,13 @@ fn pop<T:Ord + Clone>( set: &mut BTreeSet<T> ) -> Option<T> {
 }
 
 
-pub fn a_star_search<T:State + Heuristic>(root:T) -> Option<O<SearchNode<T>>>
+pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data : &'a dyn SearchInfo<T>) -> Option<O<SearchNode<'a,T>>>
 {
 
 
-    let root_node = O::new(SearchNode::new_root(root));
-    if root_node.borrow().state.is_goal() {
+    let root_node = O::new(SearchNode::new_root(root,search_data));
+    
+    if search_data.is_goal(&root_node.borrow().state) {
         return Some(root_node);
     }
 
@@ -85,9 +73,10 @@ pub fn a_star_search<T:State + Heuristic>(root:T) -> Option<O<SearchNode<T>>>
     while let Some(current) = pop(&mut not_expanded_nodes) {
         let state = &current.borrow().state;
 
-        println!("Expanding node: {}  heuristic:{}", &current.borrow(), state.heuristic() );
+        println!("Expanding node: {}  heuristic:{}", &current.borrow(), current.borrow().search.heuristic(state) );
+
         
-        assert!( !state.is_goal() ); // Se debe detectar antes de meter en not_expanded_nodes
+        assert!( !search_data.is_goal(&state) ); // Se debe detectar antes de meter en not_expanded_nodes
         let children = expand_node(&current);
         expanded_nodes.insert( state.clone(), current.clone() );
 
@@ -97,7 +86,7 @@ pub fn a_star_search<T:State + Heuristic>(root:T) -> Option<O<SearchNode<T>>>
             
 
             // IS GOAL?
-            if child.borrow().state.is_goal(){
+            if search_data.is_goal(&child.borrow().state) {
                 return Some(child);
             }
 
@@ -129,7 +118,6 @@ mod tests{
     use crate::search::astar::*;
     use std::fmt::*;
 
-    static GOAL : (u64,u64) = (3,4);
 
     #[derive(Clone,Hash,Debug,Eq,PartialEq)]
     struct Vector(u64,u64);
@@ -141,37 +129,48 @@ mod tests{
     }
     
     impl State for Vector{
-        fn expand_state(&self) -> Vec<Self> {
-            vec![
-                Vector(self.0+1,self.1  ),
-                Vector(self.0  ,self.1+1)
-            ]
-        }
-        fn is_goal(&self) -> bool {
-            self.0 == 3 && self.1 == 4
-        }
-    }
-
-    impl Heuristic for Vector{
-        fn heuristic(&self) -> u64{
-            let dx = self.0 as i64 - GOAL.0 as i64;
-            let dy = self.1 as i64 - GOAL.1 as i64;
-            let sqr = (dx*dx + dy*dy) as f64;
-            sqr.sqrt() as u64
-        }
     }
 
     
+
+
+    #[derive(Debug)]
+    struct SearchToGoal{
+        goal: Vector
+    }
+
+    impl SearchInfo<Vector> for SearchToGoal{
+        fn heuristic(&self,state: &Vector) -> u64{
+            println!("Heuristica para {} con objetivo {}", state, self.goal );
+            let dx = state.0 as i64 - self.goal.0 as i64;
+            let dy = state.1 as i64 - self.goal.1 as i64;
+            let sqr = (dx*dx + dy*dy) as f64;
+            sqr.sqrt() as u64
+        }
+
+        fn expand_state(&self,state: &Vector) -> Vec<Vector> {
+            vec![
+                Vector(state.0+1,state.1  ),
+                Vector(state.0  ,state.1+1)
+            ]
+        }
+        fn is_goal(&self,state: &Vector) -> bool {
+            state.0 == self.goal.0 && state.1 == self.goal.1
+        }
+        
+    }
+
+
     #[test]
     fn a_star_test(){
-        let found = a_star_search( Vector(0,0) );
+        let found = a_star_search( Vector(0,0), &SearchToGoal{ goal: Vector(3,4)} );
         assert!( found.is_some() );
-
-        let path = root_path(&found.unwrap());
+        let goal = found.unwrap();
+        let path = root_path(&goal);
 
         for node in path{
             println!("{}", node.borrow() );
         }
     }
-    
+
 }

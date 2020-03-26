@@ -1,53 +1,71 @@
 use std::cell::Ref;
 use std::fmt::{Display, Formatter, Result};
 use std::ops::Deref;
+use std::hash::Hash;
+use std::hash::Hasher;
 
 use crate::ravioli::O;
 
 mod astar;
 
+fn simple_hash<T:Hash>(object : &T) -> u64{
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    object.hash(&mut hasher);
+    hasher.finish()
+}
+
+pub trait SearchInfo<T:State>: std::fmt::Debug{
+    fn heuristic(&self,state: &T) -> u64{
+        0
+    }
+    fn expand_state(&self,state:&T) -> Vec<T>;
+    fn is_goal(&self,state:&T) -> bool;
+}
+
 #[derive(Debug)]
-pub struct SearchNode<T:State>{
-    to_root : Option<O<SearchNode<T>>>,
+pub struct SearchNode<'a,T:State>{
+    to_root : Option<O<SearchNode<'a, T>>>,
     level : u64,
-    state : T
+    state : T,
+    search : &'a dyn SearchInfo<T>
 }
 
 
-impl <T:State + Display> Display for SearchNode<T>{
+impl <'a,T:State + Display> Display for SearchNode<'a,T>{
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{} - {}", self.level, self.state )
     }
 }
 
 
-impl <T:State> SearchNode<T>{
-    fn new_root(state: T) -> Self{
+impl <'a,T:State> SearchNode<'a,T>{
+    fn new_root(state: T, search: &'a dyn SearchInfo<T>) -> Self{
         SearchNode{
             to_root : None,
             level : 0,
-            state : state
+            state : state,
+            search : search
         }
     }
 }
 
-pub trait State : Clone{
-    fn expand_state(&self) -> Vec<Self>;
-    fn is_goal(&self) -> bool;
+pub trait State : Hash + Clone{
 }
 
-pub fn new_child<T:State>(node : &O<SearchNode<T>>, new_state: T) -> SearchNode<T>{
+pub fn new_child<'a,T:State>(node : &O<SearchNode<'a,T>>, new_state: T) -> SearchNode<'a,T>{
     SearchNode{
         to_root: Some(node.clone()),
         level : node.borrow().level+1,
-        state: new_state
+        state: new_state,
+        search : node.borrow().search
     }
 }
 
 
-pub fn root_path<T:State>(node: &O<SearchNode<T>> ) -> Vec<O<SearchNode<T>>>{
-    let mut ret : Vec<O<SearchNode<T>>> = Vec::new();
-    let mut option : Option<O<SearchNode<T>>> = Some(node.clone());
+pub fn root_path<'a,T:State>(node: &'a O<SearchNode<'a,T>> ) -> Vec<O<SearchNode<'a,T>>>{
+    let mut ret : Vec<O<SearchNode<'a,T>>> = Vec::new();
+    let cloned = node.clone();
+    let mut option : Option<O<SearchNode<'a,T>>> = Some(cloned);
     
     while option.is_some() {
         let o = option.unwrap();
@@ -60,14 +78,15 @@ pub fn root_path<T:State>(node: &O<SearchNode<T>> ) -> Vec<O<SearchNode<T>>>{
 }
 
 
-pub fn root_path_state<T:State>(node: &O<SearchNode<T>>) -> Vec<T> {
+pub fn root_path_state<'a,T:State>(node: &'a O<SearchNode<'a,T>>) -> Vec<T> {
     let path = root_path(node);
     path.iter().map( |o| o.borrow().state.clone() ).collect()
 }
 
 
-fn expand_node<T:State>(node: &O<SearchNode<T>>) -> Vec<O<SearchNode<T>>>{
-    let childs = node.borrow().state.expand_state();
+fn expand_node<'a,T:State>(node: &O<SearchNode<'a,T>>) -> Vec<O<SearchNode<'a,T>>>{
+    let search_data = node.borrow().search;
+    let childs = search_data.expand_state(&node.borrow().state);
     childs.
         iter().
         map( |c| new_child(&node, c.clone() ) ).
@@ -76,23 +95,18 @@ fn expand_node<T:State>(node: &O<SearchNode<T>>) -> Vec<O<SearchNode<T>>>{
 }
 
 
-struct Search<T:State>{
-    root : T,
-    all_nodes : std::collections::HashMap<T,O<SearchNode<T>>>,
-    not_expanded_nodes : std::collections::BTreeSet<O<SearchNode<T>>>,
-}
 
-pub fn deep_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T>>>{
+pub fn deep_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a dyn SearchInfo<T>) -> Option<O<SearchNode<'a,T>>>{
 
-    fn search<T:State + std::fmt::Debug>( current: &O<SearchNode<T>> ) -> Option<O<SearchNode<T>>> {
+    fn search<'a,T:State + std::fmt::Debug>( current: &O<SearchNode<'a,T>> ) -> Option<O<SearchNode<'a,T>>> {
 
         
         let state : &T = &current.borrow().state;
 
         println!("level: {} state: {:?}", current.borrow().level, state );
 
-        
-        if state.is_goal() {
+        let search_data = current.borrow().search;
+        if search_data.is_goal(state) {
             return Some(current.clone());
         }
 
@@ -106,26 +120,27 @@ pub fn deep_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNo
         None
     }
     
-    let root = SearchNode::new_root(root);
+    let root = SearchNode::new_root(root, search_data);
     search(&O::new(root))
 }
 
 
 
-pub fn breadth_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<SearchNode<T>>>{
+pub fn breadth_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a dyn SearchInfo<T>) -> Option<O<SearchNode<'a,T>>>{
 
     use std::collections::VecDeque;
     
     let mut queue : VecDeque<O<SearchNode<T>>> = VecDeque::new();
     
-    fn search<T:State + std::fmt::Debug>( queue: &mut VecDeque<O<SearchNode<T>>> ) -> Option<O<SearchNode<T>>> {
+    fn search<'a,T:State + std::fmt::Debug>( queue: &mut VecDeque<O<SearchNode<'a,T>>> ) -> Option<O<SearchNode<'a,T>>> {
 
         
         while let Some(current_node) = queue.pop_back() {
             let state = &current_node.borrow().state;
             println!("level: {} state: {:?}", current_node.borrow().level, state );
 
-            if state.is_goal() {
+            let search_data = current_node.borrow().search;
+            if search_data.is_goal(state) {
                 return Some(current_node.clone());
             }
 
@@ -137,7 +152,7 @@ pub fn breadth_first_search<T:State + std::fmt::Debug>(root:T) -> Option<O<Searc
         None
     }
     
-    let root = SearchNode::new_root(root);
+    let root = SearchNode::new_root(root, search_data);
     queue.push_back(O::new(root));
     search(&mut queue)
 }
@@ -150,14 +165,30 @@ mod tests{
     use crate::search::*;
 
     impl State for Vec<i32>{
-        fn expand_state(&self) -> Vec<Vec<i32>> {
+    }
 
-            if self.len() < 4 {
+
+    impl Display for O<SearchNode<'_,Vec<i32>>>{
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            let v : &Vec<i32> = &self.borrow().state;
+            let v : Vec<String> = v.iter().map(|i| i.to_string() ).collect();
+            write!(f, "O({})", v.join("-") )
+        }
+    }
+
+    #[derive(Debug)]
+    struct DummySearch{
+    }
+
+    impl SearchInfo<Vec<i32>> for DummySearch{
+        fn expand_state(&self,state: &Vec<i32>) -> Vec<Vec<i32>> {
+
+            if state.len() < 4 {
                 
                 [0,1,2,3].
                     iter().
                     map( |i| {
-                        let mut child = self.clone();
+                        let mut child = state.clone();
                         child.push(*i);
                         child
                     }).
@@ -168,24 +199,15 @@ mod tests{
             }
         }
 
-        fn is_goal(&self) -> bool {
-            *self == vec![0 as i32,1 as i32,2 as i32,3 as i32]
-        }
-    }
-
-
-    impl Display for O<SearchNode<Vec<i32>>>{
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-            let v : &Vec<i32> = &self.borrow().state;
-            let v : Vec<String> = v.iter().map(|i| i.to_string() ).collect();
-            write!(f, "O({})", v.join("-") )
+        fn is_goal(&self, state:&Vec<i32>) -> bool {
+            *state == vec![0 as i32,1 as i32,2 as i32,3 as i32]
         }
     }
 
     #[test]
     fn deep_first_search_test(){
         let root = vec![];
-        let goal = deep_first_search(root.clone());
+        let goal = deep_first_search(root.clone(), &DummySearch{});
 
         assert!( goal.is_some() );
         let goal = goal.unwrap();
@@ -199,7 +221,7 @@ mod tests{
     #[test]
     fn breadth_first_search_test(){
         let root = vec![];
-        let goal = breadth_first_search(root.clone());
+        let goal = breadth_first_search(root.clone(),&DummySearch{});
 
         assert!( goal.is_some() );
         
@@ -213,7 +235,7 @@ mod tests{
     #[test]
     fn expand_test(){
         let vec = vec![0];
-        let children = vec.expand_state();
+        let children = DummySearch{}.expand_state(&vec);
         println!("{:?}", children );
         assert!(children == vec![ vec![0,0], vec![0,1], vec![0,2], vec![0,3] ]);
     }
@@ -221,7 +243,7 @@ mod tests{
     #[test]
     fn expand_node_test(){
         let vec = vec![0];
-        let node = O::new(SearchNode::new_root(vec.clone()));
+        let node = O::new(SearchNode::new_root(vec.clone(),&DummySearch{}));
         let children = expand_node(&node);
 
         println!("{}", children.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
@@ -236,7 +258,7 @@ mod tests{
     #[test]
     fn root_path_test(){
         let vec = vec![0];
-        let node = O::new(SearchNode::new_root(vec));
+        let node = O::new(SearchNode::new_root(vec,&DummySearch{}));
         let children = expand_node(&node);
         let children = expand_node(&children[0]);
         let children = expand_node(&children[0]);
@@ -254,106 +276,11 @@ mod tests{
     
     #[test]
     fn is_goal_test(){
-        assert!( ! vec![0].is_goal() );
-        assert!( vec![0,1,2,3].is_goal() );
+        let search = DummySearch{};
+        assert!( ! search.is_goal( & vec![0] ) );
+        assert!( search.is_goal( & vec![0,1,2,3] ) );
+
     }
 }
 
 
-
-/*
-
-
-impl <'a,T:PartialEq + Copy> PartialEq for  SearchNode<'a,T>{
-    fn eq(&self, other: &Self) -> bool {
-        self.data == other.data
-    }
-}
-
-impl <'a,T:PartialEq + Copy> Eq for  SearchNode<'a,T>{
-}
-
-impl <'a,T:PartialEq + Copy> Ord for  SearchNode<'a,T>{
-    fn cmp(&self, other: &Self) -> Ordering{
-        self.level.cmp(&other.level)
-    }
-}
-
-
-impl <'a,T:Copy + PartialEq> PartialOrd for SearchNode<'a,T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        //self.level.partial_cmp(&other.level)
-        Some(self.cmp(other))
-    }
-}
-
-
-
-
-impl <'a, T:Copy + Eq + std::hash::Hash> Search<'a,T>{
-
-
-    pub fn new(root:T, node_expander: &'a NodeExpander<T>, node_checker: &'a NodeChecker<T> ) -> Self{
-
-        
-        let mut ret = Search{
-            root,
-            all_nodes : std::collections::HashMap::new(),
-            not_expanded_nodes : std::collections::BTreeSet::new(),
-            node_expander,
-            node_checker
-        };
-
-        let root_node = SearchNode{
-             search : &ret,
-             to_root : None,
-             level : 0,
-             data : root
-         };
-
-        ret.not_expanded_nodes.insert(O::new(root_node));
-
-        ret
-    }
-
-
-
-
-
-    pub fn next_node_to_expand(&mut self) -> Option<O<SearchNode<'a,T>>> {
-        let first = self.not_expanded_nodes.iter().cloned().next();
-        match first{
-            Some(o) => {
-                self.not_expanded_nodes.remove(&o);
-                Some(o)
-            }
-            None => None
-        }
-    }
-    
-    pub fn step(&mut self) -> (bool,Option<O<T>>){
-        let found_solution = match self.next_node_to_expand(){
-            None => None,
-            Some(o) => {
-                
-                if (self.node_checker)(o.borrow().deref()) {
-                    Some(o)
-                }
-                else{
-                    let children = (self.node_expander)(o.borrow().deref());
-                    
-                    children.iter().for_each(|child| {
-                        self.not_expanded_nodes.insert( o.borrow().new_child(*child) );
-                    });
-                    
-                    self.all_nodes.insert( node.data, node );
-                    
-                    None
-                }
-            }
-        };
-
-        (self.not_expanded_nodes.len()>0,found_solution)
-    }
-}
-*/
