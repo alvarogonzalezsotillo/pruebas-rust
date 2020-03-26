@@ -15,7 +15,7 @@ fn simple_hash<T:Hash>(object : &T) -> u64{
 }
 
 pub trait SearchInfo<T:State>: std::fmt::Debug{
-    fn heuristic(&self,state: &T) -> u64{
+    fn heuristic(&self,_state: &T) -> u64{
         0
     }
     fn expand_state(&self,state:&T) -> Vec<T>;
@@ -27,6 +27,9 @@ pub struct SearchNode<'a,T:State>{
     to_root : Option<O<SearchNode<'a, T>>>,
     level : u64,
     state : T,
+
+    // https://stackoverflow.com/questions/34028324/how-do-i-use-a-custom-comparator-function-with-btreeset
+    // https://stackoverflow.com/questions/35786878/how-can-i-implement-ord-when-the-comparison-depends-on-data-not-part-of-the-comp/35788530#35788530
     search : &'a dyn SearchInfo<T>
 }
 

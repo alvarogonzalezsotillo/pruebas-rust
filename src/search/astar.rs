@@ -64,8 +64,6 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
         return Some(root_node);
     }
 
-    // https://stackoverflow.com/questions/34028324/how-do-i-use-a-custom-comparator-function-with-btreeset
-    // https://stackoverflow.com/questions/35786878/how-can-i-implement-ord-when-the-comparison-depends-on-data-not-part-of-the-comp/35788530#35788530
     let mut not_expanded_nodes : BTreeSet<O<SearchNode<T>>> = BTreeSet::new();
     let mut expanded_nodes : HashMap<T,O<SearchNode<T>>> = HashMap::new();
     not_expanded_nodes.insert( root_node );
