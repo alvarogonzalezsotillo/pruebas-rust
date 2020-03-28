@@ -15,7 +15,7 @@ fn simple_hash<T:Hash>(object : &T) -> u64{
 }
 
 pub trait SearchInfo<T:State>: std::fmt::Debug{
-    fn heuristic(&self,_state: &T) -> u64{🤦😓
+    fn heuristic(&self,_state: &T) -> u64{
         0
     }
     fn expand_state(&self,state:&T) -> Vec<T>;
