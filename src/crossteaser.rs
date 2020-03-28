@@ -1,3 +1,5 @@
+mod crossteaser_search;
+
 
 #[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]
 #[repr(usize)]
@@ -302,9 +304,25 @@ impl <'a> Board<'a>{
         strings.join("\n")
     }
     
-    pub fn one_piece(piece_set:&'a PieceSet, coords: (usize,usize), piece: usize ) -> Board<'a> {
+    pub fn from_one_piece(piece_set:&'a PieceSet, coords: (usize,usize), piece: usize ) -> Board<'a> {
         let mut pieces = [[Self::empty();3];3];
         pieces[coords.0][coords.1] = piece;
+        Board{
+            piece_set,
+            pieces
+        }
+    }
+
+    pub fn from_initial(piece_set:&'a PieceSet, piece_index: usize) -> Board<'a>{
+        let mut pieces = [[Self::empty();3];3];
+        for x in 0..3{
+            for y in 0..3{
+                if x == 1 && y == 1 {
+                    continue;
+                }
+                pieces[x][y] = piece_index;
+            }
+        }
         Board{
             piece_set,
             pieces
@@ -488,7 +506,7 @@ mod tests {
         let piece_set = PieceSet::from_piece(&Piece::seed());
         let piece_index = 0;
         
-        let board1 = Board::one_piece(&piece_set, (0,0), piece_index);
+        let board1 = Board::from_one_piece(&piece_set, (0,0), piece_index);
         assert!( board1.pieces[0][0] == piece_index);
         assert!( board1.pieces[0][1] == Board::empty());
         
@@ -504,10 +522,10 @@ mod tests {
         let piece_set = PieceSet::from_piece(&Piece::seed());
         let piece_index = 0;
         
-        let board1 = Board::one_piece(&piece_set, (0,0), piece_index);
+        let board1 = Board::from_one_piece(&piece_set, (0,0), piece_index);
         let board2 = board1.rotate((0,0),South).unwrap();
 
-        let board3 = Board::one_piece(&piece_set, (0,1), piece_set.rotate(piece_index,South as usize) );
+        let board3 = Board::from_one_piece(&piece_set, (0,1), piece_set.rotate(piece_index,South as usize) );
 
         println!( "BOARD1:\n{}", board1.ascii_art_string() );
         println!( "BOARD2:\n{}", board2.ascii_art_string() );
@@ -522,7 +540,7 @@ mod tests {
         let piece_set = PieceSet::from_piece(&Piece::seed());
         let piece_index = 0;
         
-        let mut board = Board::one_piece(&piece_set, (0,0), piece_index);
+        let mut board = Board::from_one_piece(&piece_set, (0,0), piece_index);
         let mut coords : (i8,i8) = (0,0);
         let directions = vec![South,South,East,East,North,North,West,West];
 
@@ -537,9 +555,23 @@ mod tests {
             println!("{}", board.ascii_art_string());
         });
 
-        assert!( board == Board::one_piece(&piece_set, (0,0), piece_index) );
+        assert!( board == Board::from_one_piece(&piece_set, (0,0), piece_index) );
 
     }
 
-    
+    #[test]
+    fn initial_board(){
+        let piece_set = PieceSet::from_piece(&Piece::seed());
+        let board = Board::from_initial(&piece_set,0);
+        println!("{}", board.ascii_art_string());
+        println!("");
+        println!("{}", board.rotate( (1,0), South).unwrap().ascii_art_string());
+        println!("");
+        println!("{}", board.rotate( (1,2), North).unwrap().ascii_art_string());
+        println!("");
+        println!("{}", board.rotate( (0,1), East).unwrap().ascii_art_string());
+        println!("");
+        println!("{}", board.rotate( (2,1), West).unwrap().ascii_art_string());
+        println!("");
+    }
 }
