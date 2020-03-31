@@ -255,11 +255,18 @@ impl <'a> Board<'a>{
     
     pub fn children(&self) -> Vec<Option<Board<'a>>> {
         let empty_coords = self.empty_coords();
-        (0..3).map(|d|{
+        (0..4).map(|d|{
             let direction = Direction::from_u8(d).unwrap();
             let coords = direction.opposite().traslate( Self::coords_to_i8(empty_coords) );
             self.rotate( Self::coords_to_usize(coords), direction )
         }).collect()
+    }
+
+    pub fn children_filtered(&self) -> Vec<Board<'a>>{
+        self.children().iter().
+            filter(|c| c.is_some()).
+            map(|c| c.unwrap()).
+            collect()
     }
 
     pub fn ascii_art(&self) -> [[char;9];9] {
@@ -338,8 +345,8 @@ impl <'a> Board<'a>{
     }
     
     pub fn empty_coords(&self) -> (usize,usize){
-        for x in 0..4{
-            for y in 0..4{
+        for x in 0..3{
+            for y in 0..3{
                 if self.is_empty( (x,y) ){
                     return (x,y);
                 }
@@ -357,6 +364,10 @@ impl <'a> Board<'a>{
 
     pub fn rotate(&self, coords: (usize,usize), d: Direction) -> Option<Board<'a>>{
 
+        if coords.0 > 2 || coords.1 > 2 {
+            return None;
+        }
+        
         if self.is_empty(coords){
             return None;
         }
@@ -574,4 +585,29 @@ mod tests {
         println!("{}", board.rotate( (2,1), West).unwrap().ascii_art_string());
         println!("");
     }
+
+    #[test]
+    fn initial_board_children(){
+        let piece_set = PieceSet::from_piece(&Piece::seed());
+        let board = Board::from_initial(&piece_set,0);
+        println!("{}", board.ascii_art_string());
+        println!("");
+
+        let children = board.children();
+        println!("children:{}", children.len());
+        assert!( children.len() == 4 );
+
+        let children = board.children_filtered();
+        assert!( children.len() == 4 );
+
+        children.iter().for_each( |c|{
+            println!("{}", c.ascii_art_string());
+            println!("");
+        });
+
+        children.iter().for_each(|c|{
+           assert!( c.children_filtered().len() == 3 ); 
+        });
+    }
+    
 }
