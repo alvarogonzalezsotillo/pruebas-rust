@@ -56,8 +56,7 @@ fn pop<T:Ord + Clone>( set: &mut BTreeSet<T> ) -> Option<T> {
 
 pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data : &'a dyn SearchInfo<T>) -> Option<O<SearchNode<'a,T>>>
 {
-
-
+    let mut expanded_counter : usize = 0;
     let root_node = O::new(SearchNode::new_root(root,search_data));
     
     if search_data.is_goal(&root_node.borrow().state) {
@@ -71,11 +70,25 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
     while let Some(current) = pop(&mut not_expanded_nodes) {
         let state = &current.borrow().state;
 
+        if let Some(already_expanded) = expanded_nodes.get(state){
+            //println!("  se expande de segundas: {}", state );
+            if already_expanded.borrow().level > current.borrow().level {
+                panic!("El que estaba sin expandir es más corto que el expandido");
+            }
+            continue;
+        }
+        
         //println!("Expanding node: {}  heuristic:{}", &current.borrow(), current.borrow().search.heuristic(state) );
 
         
         assert!( !search_data.is_goal(&state) ); // Se debe detectar antes de meter en not_expanded_nodes
         let children = expand_node(&current);
+        expanded_counter = expanded_counter + 1;
+        if expanded_counter%1000 == 0{
+            println!("Nodos expandidos:{} {} Nodos sin expandir:{} Ultimo nivel:{}",
+                     expanded_counter, expanded_nodes.len(), not_expanded_nodes.len(), current.borrow().level );
+        }
+        
         expanded_nodes.insert( state.clone(), current.clone() );
 
         for child in children{
