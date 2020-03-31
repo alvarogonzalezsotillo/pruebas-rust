@@ -71,7 +71,7 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
     while let Some(current) = pop(&mut not_expanded_nodes) {
         let state = &current.borrow().state;
 
-        println!("Expanding node: {}  heuristic:{}", &current.borrow(), current.borrow().search.heuristic(state) );
+        //println!("Expanding node: {}  heuristic:{}", &current.borrow(), current.borrow().search.heuristic(state) );
 
         
         assert!( !search_data.is_goal(&state) ); // Se debe detectar antes de meter en not_expanded_nodes
@@ -80,7 +80,7 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
 
         for child in children{
 
-            println!("  child: {}", child.borrow() );
+            //println!("  child: {}", child.borrow() );
             
 
             // IS GOAL?
@@ -98,7 +98,7 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
             // ALREADY IN NOT EXPANDED NODES?
             // ADD TO not_expanded_nodes
             if let Some(already_in_not_expanded) = not_expanded_nodes.get(&child){
-                println!("  Ya estaba: {} {}", already_in_not_expanded.borrow(), child.borrow() );
+                //println!("  Ya estaba: {} {}", already_in_not_expanded.borrow(), child.borrow() );
             }
             else{
                 not_expanded_nodes.insert(child);

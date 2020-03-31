@@ -6,7 +6,7 @@ use std::hash::Hasher;
 
 use crate::ravioli::O;
 
-mod astar;
+pub mod astar;
 
 fn simple_hash<T:Hash>(object : &T) -> u64{
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -26,7 +26,7 @@ pub trait SearchInfo<T:State>: std::fmt::Debug{
 pub struct SearchNode<'a,T:State>{
     to_root : Option<O<SearchNode<'a, T>>>,
     level : u64,
-    state : T,
+    pub state : T,
 
     // https://stackoverflow.com/questions/34028324/how-do-i-use-a-custom-comparator-function-with-btreeset
     // https://stackoverflow.com/questions/35786878/how-can-i-implement-ord-when-the-comparison-depends-on-data-not-part-of-the-comp/35788530#35788530

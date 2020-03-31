@@ -58,9 +58,11 @@ impl <'a> SearchInfo<Board<'a>> for BoardSearch{
 #[cfg(test)]
 mod tests {
 
+    use crate::crossteaser::crossteaser_search::*;
     use crate::crossteaser::*;
     use crate::search::*;
     use crate::ravioli::*;
+    use crate::search::astar::*;
     use rand::Rng;
 
 
@@ -75,10 +77,59 @@ mod tests {
         }
         board
     }
+
+    #[test]
+    fn is_goal(){
+        let piece_set = PieceSet::from_piece(&Piece::seed());
+        let search = BoardSearch{};
+
+        for i in 0.. piece_set.pieces.len(){
+            let board = Board::from_initial(&piece_set,i);
+            assert!(search.is_goal(&board));
+        }
+    }
+
     
     #[test]
-    fn rotate() {
+    fn root_is_goal() {
         let piece_set = PieceSet::from_piece(&Piece::seed());
         let board = Board::from_initial(&piece_set,0);
+        let search = BoardSearch{};
+        let found = a_star_search(board,&search);
+        assert!(found.is_some());
+        assert!(found.unwrap().borrow().state == board);
     }
+
+    #[test]
+    fn search_on_scrambled_board() {
+
+        fn search_with_step(step: usize){
+            let piece_set = PieceSet::from_piece(&Piece::seed());
+            let board = Board::from_initial(&piece_set,0);
+            let scrambled = scrambled_board(&piece_set,0,step);
+
+            println!("Probando con paso:{} -- {}", step, scrambled);
+            
+            let search = BoardSearch{};
+            let found = a_star_search(scrambled,&search);
+            assert!(found.is_some());
+            let found = found.unwrap();
+            assert!(found.borrow().state == board);
+
+            let to_root = root_path_state(&found);
+            to_root.iter().for_each( |b| println!("{}",b) );
+            assert!(to_root[to_root.len()-1] == scrambled);
+            assert!(to_root[0] == board);
+        }
+
+        for step in 1..50{
+            search_with_step(step);
+        }
+        
+    }
+
+    
+    
+
+
 }
