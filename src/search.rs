@@ -1,6 +1,4 @@
-use std::cell::Ref;
 use std::fmt::{Display, Formatter, Result};
-use std::ops::Deref;
 use std::hash::Hash;
 use std::hash::Hasher;
 
@@ -166,6 +164,7 @@ pub fn breadth_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : 
 mod tests{
 
     use crate::search::*;
+    use std::ops::Deref;
 
     impl State for Vec<i32>{
     }
@@ -271,7 +270,7 @@ mod tests{
         println!("{}", root_path.iter().map(|c| c.to_string() ).collect::<Vec<String>>().join(" ") );
         assert!( root_path.len() == 4 );
 
-        let root : Ref<SearchNode<Vec<i32>>> = root_path[root_path.len()-1].borrow();
+        let root : std::cell::Ref<SearchNode<Vec<i32>>> = root_path[root_path.len()-1].borrow();
 
         assert!( std::ptr::eq(root.deref(), node.borrow().deref() ) );
     }

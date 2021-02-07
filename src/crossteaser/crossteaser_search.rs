@@ -1,8 +1,6 @@
 
 use crate::crossteaser::*;
-use crate::crossteaser::Direction::*;
 use crate::search::*;
-use crate::ravioli::*;
 
 
 impl <'a> std::hash::Hash for Board<'a>{
@@ -15,7 +13,7 @@ impl <'a> State for Board<'a>{
 }
 
 #[derive(Debug)]
-struct BoardSearch{
+pub struct BoardSearch{
 }
 
 impl <'a> SearchInfo<Board<'a>> for BoardSearch{
@@ -55,28 +53,28 @@ impl <'a> SearchInfo<Board<'a>> for BoardSearch{
 }
 
 
+pub fn scrambled_board<'a>(piece_set: &'a PieceSet, piece_index: usize, steps: usize ) -> Board<'a>{
+    use rand::Rng;
+    
+    let mut board = Board::from_initial(piece_set,piece_index);
+    let mut rng = rand::thread_rng();
+    
+    for _ in 0..steps{
+        let children = board.children_filtered();
+        let index = rng.gen_range(0,children.len());
+        board = children[index];
+    }
+    board
+}
+
+
 #[cfg(test)]
 mod tests {
 
     use crate::crossteaser::crossteaser_search::*;
-    use crate::crossteaser::*;
-    use crate::search::*;
-    use crate::ravioli::*;
     use crate::search::astar::*;
-    use rand::Rng;
 
 
-    fn scrambled_board<'a>(piece_set: &'a PieceSet, piece_index: usize, steps: usize ) -> Board<'a>{
-        let mut board = Board::from_initial(piece_set,piece_index);
-        let mut rng = rand::thread_rng();
-        
-        for _ in 0..steps{
-            let children = board.children_filtered();
-            let index = rng.gen_range(0,children.len());
-            board = children[index];
-        }
-        board
-    }
 
     #[test]
     fn is_goal(){

@@ -1,9 +1,9 @@
-mod crossteaser_search;
+pub mod crossteaser_search;
 
 
 #[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]
 #[repr(usize)]
-enum Color{
+pub enum Color{
     C1,
     C2,
     C3,
@@ -27,7 +27,7 @@ impl Color{
 
 use num_derive::FromPrimitive;    
 #[derive(Debug,FromPrimitive,Clone,Copy)]
-enum Direction{
+pub enum Direction{
     North = 0,
     East = 1,
     South = 2,
@@ -69,13 +69,13 @@ impl Direction{
 
 
 #[derive(Debug,Eq,PartialEq,Hash,Clone,Copy)]
-struct Piece{
+pub struct Piece{
     colors : [Color;6],
 }
 
 
 #[derive(Debug)]
-struct PieceSet{
+pub struct PieceSet{
     pieces : Vec<Piece>,
     rotations : Vec<[usize;4]>,
 }
@@ -231,7 +231,7 @@ impl Piece{
 }
 
 #[derive(Copy,Clone)]
-struct Board<'a>{
+pub struct Board<'a>{
     piece_set : &'a PieceSet,
     pieces : [[usize;3];3],
 }
@@ -422,7 +422,6 @@ impl <'a> Board<'a>{
 mod tests {
 
     use crate::crossteaser::Direction;
-    use crate::crossteaser::Color::*;
     use crate::crossteaser::Direction::*;
     use crate::crossteaser::Piece;
     use crate::crossteaser::PieceSet;

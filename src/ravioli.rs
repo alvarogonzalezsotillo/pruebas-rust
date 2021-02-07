@@ -104,11 +104,11 @@ mod tests {
         let b = a.clone();
         assert!( unsafe{UN_STRUCT_COUNTER} == 1);
 
-        let c = b.clone();
+        let _c = b.clone();
         assert!( unsafe{UN_STRUCT_COUNTER} == 2);
 
         let o1a = O::new(a);
-        let o2a = o1a.clone();
+        let _o2a = o1a.clone();
         assert!( unsafe{UN_STRUCT_COUNTER} == 2);
     }
 

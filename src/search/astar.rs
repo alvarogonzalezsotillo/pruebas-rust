@@ -1,12 +1,8 @@
-use std::cell::Ref;
-use std::fmt::{Display, Formatter, Result, Debug};
-use std::ops::Deref;
+use std::fmt::Display;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::cmp::{Ordering, Eq};
 use std::cmp::Ordering::*;
-use std::hash::Hash;
-use std::hash::Hasher;
 
 use crate::ravioli::O;
 
@@ -110,7 +106,7 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
 
             // ALREADY IN NOT EXPANDED NODES?
             // ADD TO not_expanded_nodes
-            if let Some(already_in_not_expanded) = not_expanded_nodes.get(&child){
+            if let Some(_already_in_not_expanded) = not_expanded_nodes.get(&child){
                 //println!("  Ya estaba: {} {}", already_in_not_expanded.borrow(), child.borrow() );
             }
             else{
