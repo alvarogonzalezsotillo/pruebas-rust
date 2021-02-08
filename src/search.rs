@@ -12,6 +12,8 @@ fn simple_hash<T:Hash>(object : &T) -> u64{
     hasher.finish()
 }
 
+
+
 pub trait SearchInfo<T:State>: std::fmt::Debug{
     fn heuristic(&self,_state: &T) -> u64{
         0
@@ -25,6 +27,7 @@ pub struct SearchNode<'a,T:State>{
     to_root : Option<O<SearchNode<'a, T>>>,
     level : u64,
     pub state : T,
+    pub cached_state_hash: u64,
 
     // https://stackoverflow.com/questions/34028324/how-do-i-use-a-custom-comparator-function-with-btreeset
     // https://stackoverflow.com/questions/35786878/how-can-i-implement-ord-when-the-comparison-depends-on-data-not-part-of-the-comp/35788530#35788530
@@ -44,8 +47,9 @@ impl <'a,T:State> SearchNode<'a,T>{
         SearchNode{
             to_root : None,
             level : 0,
+            cached_state_hash : simple_hash(&state),
             state : state,
-            search : search
+            search : search,
         }
     }
 }
@@ -57,8 +61,9 @@ pub fn new_child<'a,T:State>(node : &O<SearchNode<'a,T>>, new_state: T) -> Searc
     SearchNode{
         to_root: Some(node.clone()),
         level : node.borrow().level+1,
+        cached_state_hash: simple_hash(&new_state),
         state: new_state,
-        search : node.borrow().search
+        search : node.borrow().search,
     }
 }
 

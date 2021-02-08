@@ -54,10 +54,12 @@ impl <'a> SearchInfo<Board<'a>> for BoardSearch{
 
 
 pub fn scrambled_board<'a>(piece_set: &'a PieceSet, piece_index: usize, steps: usize ) -> Board<'a>{
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
     use rand::Rng;
     
     let mut board = Board::from_initial(piece_set,piece_index);
-    let mut rng = rand::thread_rng();
+    let mut rng = StdRng::seed_from_u64(1);
     
     for _ in 0..steps{
         let children = board.children_filtered();

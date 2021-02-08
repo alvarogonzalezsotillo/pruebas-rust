@@ -8,6 +8,8 @@ use crate::ravioli::O;
 
 use crate::search::*;
 
+
+
 impl <'a,T:State + PartialEq> Eq for SearchNode<'a,T>{
 }
 
@@ -23,7 +25,8 @@ impl <'a,T:State + PartialEq> Ord for SearchNode<'a,T>{
         let mine = self.level + search_data.heuristic(&self.state);
         let their = other.level + search_data.heuristic(&other.state);
         match mine.cmp(&their){
-            Equal => simple_hash(&self.state).cmp(&simple_hash(&other.state)),
+            Equal => self.cached_state_hash.cmp(&other.cached_state_hash),
+//            Equal => simple_hash(&self.state).cmp(&simple_hash(&other.state)),
             others => others    
         }
     }
