@@ -4,43 +4,78 @@ pub mod crossteaser_search;
 #[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]
 #[repr(usize)]
 pub enum Color{
-    C1,
-    C2,
-    C3,
-    C4,
-    C5,
-    C6
+    //G,R,P,B,Y,O
+    G,
+    R,
+    P,
+    B,
+    Y,
+    O
 }
 
 impl Color{
     pub fn letter(&self) -> char {
         match self {
-            Color::C1 => '1',
-            Color::C2 => '2',
-            Color::C3 => '3',
-            Color::C4 => '4',
-            Color::C5 => '5',
-            Color::C6 => '6',
+            Color::G => '1',
+            Color::R => '2',
+            Color::P => '3',
+            Color::B => '4',
+            Color::Y => '5',
+            Color::O => '6',
+        }
+    }
+
+    pub fn from_letter(letter:char) -> Option<Color> {
+        match letter {
+            '1' => Some(Color::G),
+            '2' => Some(Color::R),
+            '3' => Some(Color::P),
+            '4' => Some(Color::B),
+            '5' => Some(Color::Y),
+            '6' => Some(Color::O),
+            _ => None
         }
     }
 }
 
-use num_derive::FromPrimitive;    
-#[derive(Debug,FromPrimitive,Clone,Copy)]
+#[derive(Debug,Clone,Copy)]
 pub enum Direction{
-    North = 0,
-    East = 1,
-    South = 2,
-    West = 3,
-    Up = 4,
+    Up = 0,
+    North = 1,
+    East = 2,
+    South = 3,
+    West = 4,
     Down = 5
 }
 
 impl Direction{
+
+    pub fn posible_rotations() -> [Direction;4]{
+        use Direction::*;
+        [North,East,South,West]
+    }
     
+    pub fn from_index(s: usize) -> Direction{
+        use Direction::*;
+        match s{
+            0 => North,
+            1 => East,    
+            2 => South,
+            3 => West,
+            _ => panic!("No es un índice válido")
+        }
+    }
     
-    pub fn from_u8(d: u8) -> Option<Direction>{
-        num_traits::FromPrimitive::from_u8(d)
+    pub fn to_index(&self) -> usize{
+        use Direction::*;
+        match self{
+            North => 0,
+            East =>  1,
+            South => 2,
+            West =>  3,
+            Up => panic!("No es un índice"),
+            Down => panic!("No es un índice")
+        }
     }
 
     pub fn traslate(&self, coords: (i8,i8) ) -> (i8,i8){
@@ -70,7 +105,7 @@ impl Direction{
 
 #[derive(Debug,Eq,PartialEq,Hash,Clone,Copy)]
 pub struct Piece{
-    colors : [Color;6],
+    pub colors : [Color;6],
 }
 
 
@@ -81,6 +116,22 @@ pub struct PieceSet{
 }
 
 impl PieceSet{
+
+    pub fn get_piece_index_from_chars( &self, up_color: char, north_color: char) -> Option<usize>{
+        PieceSet::get_piece_index_from_colors(self, Color::from_letter(up_color).unwrap(), Color::from_letter(north_color).unwrap())
+    }
+    
+    pub fn get_piece_index_from_colors( &self, up_color: Color, north_color: Color ) -> Option<usize>{
+        use Direction::*;
+        for i in 0 .. self.pieces.len(){
+            let piece = &self.pieces[i];
+            if piece.colors[Up as usize] == up_color && piece.colors[North as usize] == north_color{
+                return Some(i)
+            }
+        }
+        return None
+    }
+
     
     fn compute_rotations(pieces: &Vec<Piece>) -> Vec<[usize;4]> {
         let mut ret = Vec::with_capacity(pieces.len());
@@ -88,12 +139,11 @@ impl PieceSet{
             ret.push( [0,0,0,0] );
         }
         
-        for direction in 0..4{
-            let direction = Direction::from_u8(direction).unwrap();
+        for direction in Direction::posible_rotations().iter(){
             for piece in pieces.iter(){
                 let index = Self::index_of_piece(piece,pieces).unwrap();
-                let index_of_rotation : usize = Self::index_of_piece(&piece.rotate(direction),pieces).unwrap();
-                ret[index][direction as usize] = index_of_rotation;
+                let index_of_rotation : usize = Self::index_of_piece(&piece.rotate(*direction),pieces).unwrap();
+                ret[index][Direction::to_index(direction)] = index_of_rotation;
             }
         }
 
@@ -108,8 +158,8 @@ impl PieceSet{
         Self::index_of_piece(piece,&self.pieces)
     }
 
-    fn rotate(&self, index: usize, direction: usize ) -> usize{
-        self.rotations[index][direction] 
+    fn rotate(&self, index: usize, direction: Direction ) -> usize{
+        self.rotations[index][direction.to_index()] 
     }
     
     fn compute_pieces_from(piece: &Piece) -> Vec<Piece> {
@@ -159,7 +209,7 @@ impl Piece{
 
     pub fn seed() -> Piece {
         use Color::*;
-        Piece{colors:[C1,C2,C3,C4,C5,C6]}
+        Piece{colors:[G,R,P,B,Y,O]}
     }
 
     pub fn color(&self, d: Direction) -> Color {
@@ -185,41 +235,41 @@ impl Piece{
         match d{
             North => Piece {
                 colors: [
+                    self.color(South),
                     self.color(Up),
                     self.color(East),
                     self.color(Down),
                     self.color(West),
-                    self.color(South),
                     self.color(North),
                 ]
             },
             East => Piece {
                 colors: [
+                    self.color(West),
                     self.color(North),
                     self.color(Up),
                     self.color(South),
                     self.color(Down),
-                    self.color(West),
                     self.color(East),
                 ]
             },
             South => Piece {
                 colors: [
+                    self.color(North),
                     self.color(Down),
                     self.color(East),
                     self.color(Up),
                     self.color(West),
-                    self.color(North),
                     self.color(South)
                 ]
             },
             West => Piece {
                 colors: [
+                    self.color(East),
                     self.color(North),
                     self.color(Down),
                     self.color(South),
                     self.color(Up),
-                    self.color(East),
                     self.color(West),
                 ]
             },
@@ -269,10 +319,9 @@ impl <'a> Board<'a>{
     
     pub fn children(&self) -> Vec<Option<Board<'a>>> {
         let empty_coords = self.empty_coords();
-        (0..4).map(|d|{
-            let direction = Direction::from_u8(d).unwrap();
+        Direction::posible_rotations().iter().map(|direction|{
             let coords = direction.opposite().traslate( Self::coords_to_i8(empty_coords) );
-            self.rotate( Self::coords_to_usize(coords), direction )
+            self.rotate( Self::coords_to_usize(coords), *direction )
         }).collect()
     }
 
@@ -298,10 +347,9 @@ impl <'a> Board<'a>{
 
                 let o = (1+x*3,1+y*3);
                 
-                for d in 0..4 {
-                    let direction = Direction::from_u8(d).unwrap();
+                for direction in Direction::posible_rotations().iter() {
                     let p = direction.traslate( (o.0 as i8, o.1 as i8) );
-                    let color = piece.color(direction);
+                    let color = piece.color(*direction);
 
                     b[p.1 as usize][p.0 as usize] = color.letter();
                 }
@@ -400,8 +448,8 @@ impl <'a> Board<'a>{
 
         
         let piece = match d{
-            North | South => self.piece_set.rotate( old_piece, d as usize ),
-            East | West => self.piece_set.rotate( old_piece, d.opposite() as usize ),
+            North | South => self.piece_set.rotate( old_piece, d  ),
+            East | West => self.piece_set.rotate( old_piece, d.opposite() ),
             _ => panic!("No se puede rotar así")
         };
 
@@ -436,7 +484,8 @@ mod tests {
         let p3 = p2.rotate(North);
 
         println!("Pieza original: {:?}", p1 );
-        println!("Pieza rotada: {:?}", p3);
+        println!("Pieza rotada: {:?}", p2 );
+        println!("Pieza rotada de vuelta: {:?}", p3);
 
         assert!(p1==p3);
 
@@ -456,8 +505,8 @@ mod tests {
         let piece_set = PieceSet::from_piece(&Piece::seed());
         
         let i1 = 0;
-        let i2 = piece_set.rotate(i1,East as usize);
-        let i3 = piece_set.rotate(i2,South as usize);
+        let i2 = piece_set.rotate(i1,East);
+        let i3 = piece_set.rotate(i2,South);
 
         let p1 = piece_set.pieces[i1];
         let p2 = p1.rotate(East);
@@ -478,17 +527,19 @@ mod tests {
         let mut piece = piece_set.pieces[index];
 
         for _ in 0..100 {
-            let direction : u8 = random::<u8>()%4;
-            index = piece_set.rotate(index, direction as usize );
-            piece = piece.rotate(Direction::from_u8(direction).unwrap());
+            let d : usize = random::<usize>()%4;
+            let direction = Direction::from_index(d);
+            index = piece_set.rotate(index, direction);
+            piece = piece.rotate(direction);
         }
 
         assert!( piece == piece_set.pieces[index] );
     }
 
+    #[cfg(not(debug_assertions))]
     #[test]
     fn index_faster_than_regular_pieces(){
-
+        // ESTE TEST SOLO TIENE SENTIDO EN RELEASE
         fn measure_time<T>( msg: &str, function : &dyn Fn()  -> T ) -> (u128,T) {
             let now = std::time::Instant::now();
             let ret = function();
@@ -498,12 +549,12 @@ mod tests {
         };
         
         let piece_set = PieceSet::from_piece(&Piece::seed());
-        let times : usize= 1000000;
+        let times : usize= 10000000;
 
         let (millis_regular,final_regular_piece) = measure_time("regular", &||{
             let mut piece = piece_set.pieces[0];
             for i in 0..times{
-                let direction = Direction::from_u8((i%4) as u8).unwrap();
+                let direction = Direction::from_index(i%4);
                 piece = piece.rotate(direction);
             }
             piece
@@ -512,7 +563,8 @@ mod tests {
         let (millis_index,final_index) = measure_time("index", &||{
             let mut piece = 0;
             for i in 0..times{
-                piece = piece_set.rotate(piece,i%4);
+                let direction = Direction::from_index(i%4);
+                piece = piece_set.rotate(piece,direction);
             }
             piece
         });
@@ -534,7 +586,7 @@ mod tests {
         
         let board2 = board1.rotate((0,0),South).unwrap();
         assert!( board2.pieces[0][0] == Board::empty());
-        assert!( board2.pieces[0][1] == piece_set.rotate(piece_index,South as usize) );
+        assert!( board2.pieces[0][1] == piece_set.rotate(piece_index,South) );
     }
 
 
@@ -547,7 +599,7 @@ mod tests {
         let board1 = Board::from_one_piece(&piece_set, (0,0), piece_index);
         let board2 = board1.rotate((0,0),South).unwrap();
 
-        let board3 = Board::from_one_piece(&piece_set, (0,1), piece_set.rotate(piece_index,South as usize) );
+        let board3 = Board::from_one_piece(&piece_set, (0,1), piece_set.rotate(piece_index,South) );
 
         println!( "BOARD1:\n{}", board1.ascii_art_string() );
         println!( "BOARD2:\n{}", board2.ascii_art_string() );

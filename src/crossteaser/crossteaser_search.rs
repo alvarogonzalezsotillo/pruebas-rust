@@ -122,7 +122,13 @@ mod tests {
             assert!(to_root[0] == board);
         }
 
-        for step in 1..50{
+        #[cfg(not(debug_assertions))]
+        let max = 50;
+
+        #[cfg(debug_assertions)]
+        let max = 30;
+        
+        for step in 1..max{
             search_with_step(step);
         }
         
