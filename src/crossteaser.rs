@@ -16,12 +16,12 @@ pub enum Color{
 impl Color{
     pub fn letter(&self) -> char {
         match self {
-            Color::G => '1',
-            Color::R => '2',
-            Color::P => '3',
-            Color::B => '4',
-            Color::Y => '5',
-            Color::O => '6',
+            Color::G => 'G',
+            Color::R => 'R',
+            Color::P => 'P',
+            Color::B => 'B',
+            Color::Y => 'Y',
+            Color::O => 'O',
         }
     }
 
@@ -117,8 +117,9 @@ pub struct PieceSet{
 
 impl PieceSet{
 
-    pub fn get_piece_index_from_chars( &self, up_color: char, north_color: char) -> Option<usize>{
-        PieceSet::get_piece_index_from_colors(self, Color::from_letter(up_color).unwrap(), Color::from_letter(north_color).unwrap())
+    pub fn get_piece_index_of_initial_piece(&self) -> usize{
+        // EN LAS IMÁGENES DE INTERNET SALE RESUELTO CON AMARILLO Y ROJO
+        self.get_piece_index_from_colors(Color::Y,Color::R).unwrap()
     }
     
     pub fn get_piece_index_from_colors( &self, up_color: Color, north_color: Color ) -> Option<usize>{
@@ -131,7 +132,6 @@ impl PieceSet{
         }
         return None
     }
-
     
     fn compute_rotations(pieces: &Vec<Piece>) -> Vec<[usize;4]> {
         let mut ret = Vec::with_capacity(pieces.len());
@@ -308,6 +308,26 @@ impl PartialEq for Board<'_> {
 
 impl <'a> Board<'a>{
 
+    pub fn from_colors(piece_set:&'a PieceSet, colors_up_north: [Option<[Color;2]>;9] ) -> Board<'a> {
+        let mut pieces = [[Self::empty();3];3];
+        for i in 0..9{
+            let row = i/3;
+            let col = i%3;
+            if let Some(colors) = colors_up_north[i] {
+                let up = colors[0];
+                let north = colors[1];
+                let piece = piece_set.get_piece_index_from_colors(up,north);
+                pieces[col][row] = piece.unwrap();
+            }
+        }
+        Board{
+            piece_set,
+            pieces
+        }
+    }
+    
+
+    
     pub fn coords_to_i8( coords: (usize,usize) ) -> (i8,i8) {
         (coords.0 as i8, coords.1 as i8)
     }
@@ -332,9 +352,9 @@ impl <'a> Board<'a>{
             collect()
     }
 
-    pub fn ascii_art(&self) -> [[char;9];9] {
+    pub fn ascii_art(&self) -> [[char;11];11] {
 
-        let mut b = [[' ';9];9];
+        let mut b = [[' ';11];11];
 
         for x in 0..3 {
             for y in 0..3 {
@@ -351,11 +371,11 @@ impl <'a> Board<'a>{
                     let p = direction.traslate( (o.0 as i8, o.1 as i8) );
                     let color = piece.color(*direction);
 
-                    b[p.1 as usize][p.0 as usize] = color.letter();
+                    b[p.1 as usize+y][p.0 as usize+x] = color.letter();
                 }
                 
                 let color = piece.color(Direction::Up);
-                b[o.1 as usize][o.0 as usize] = color.letter();
+                b[o.1+y as usize][o.0+x as usize] = color.letter();
             }
         }
 

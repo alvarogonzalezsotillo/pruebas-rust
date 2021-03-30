@@ -53,17 +53,22 @@ fn pop<T:Ord + Clone>( set: &mut BTreeSet<T> ) -> Option<T> {
 }
 
 
-pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data : &'a dyn SearchInfo<T>) -> Option<O<SearchNode<'a,T>>>
+pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data : &'a dyn SearchInfo<T>) ->
+    (Option<O<SearchNode<'a,T>>>,
+     BTreeSet<O<SearchNode<T>>>,
+     HashMap<T,O<SearchNode<T>>>)
 {
     let mut expanded_counter : usize = 0;
     let root_node = O::new(SearchNode::new_root(root,search_data));
-    
-    if search_data.is_goal(&root_node.borrow().state) {
-        return Some(root_node);
-    }
 
     let mut not_expanded_nodes : BTreeSet<O<SearchNode<T>>> = BTreeSet::new();
     let mut expanded_nodes : HashMap<T,O<SearchNode<T>>> = HashMap::new();
+    
+    if search_data.is_goal(&root_node.borrow().state) {
+        // println!("  root es goal: {}", root_node.borrow().state );
+        return (Some(root_node),not_expanded_nodes,expanded_nodes);
+    }
+
     not_expanded_nodes.insert( root_node );
 
     while let Some(current) = pop(&mut not_expanded_nodes) {
@@ -77,18 +82,19 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
             continue;
         }
         
-        //println!("Expanding node: {}  heuristic:{}", &current.borrow(), current.borrow().search.heuristic(state) );
+        // println!("Expanding node: {}  heuristic:{}", &current.borrow(), current.borrow().search.heuristic(state) );
 
         
         assert!( !search_data.is_goal(&state) ); // Se debe detectar antes de meter en not_expanded_nodes
         let children = expand_node(&current);
         expanded_counter = expanded_counter + 1;
+        expanded_nodes.insert( state.clone(), current.clone() );
+        
         if expanded_counter%1000 == 0{
-            println!("Nodos expandidos:{} {} Nodos sin expandir:{} Ultimo nivel:{}",
-                     expanded_counter, expanded_nodes.len(), not_expanded_nodes.len(), current.borrow().level );
+            println!("Nodos expandidos: {} Nodos sin expandir:{} Ultimo nivel:{}",
+                     expanded_nodes.len(), not_expanded_nodes.len(), current.borrow().level );
         }
         
-        expanded_nodes.insert( state.clone(), current.clone() );
 
         for child in children{
 
@@ -97,7 +103,7 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
 
             // IS GOAL?
             if search_data.is_goal(&child.borrow().state) {
-                return Some(child);
+                return (Some(child),not_expanded_nodes,expanded_nodes);
             }
 
             // HAS BEEN ALREADY EXPANDED?
@@ -110,7 +116,7 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
             // ALREADY IN NOT EXPANDED NODES?
             // ADD TO not_expanded_nodes
             if let Some(_already_in_not_expanded) = not_expanded_nodes.get(&child){
-                //println!("  Ya estaba: {} {}", already_in_not_expanded.borrow(), child.borrow() );
+                // println!("  Ya estaba: {} {}", _already_in_not_expanded.borrow(), child.borrow() );
             }
             else{
                 not_expanded_nodes.insert(child);
@@ -118,7 +124,7 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
         }
     }
     
-    None
+    (None,not_expanded_nodes,expanded_nodes)
 }
 
 
@@ -173,7 +179,7 @@ mod tests{
 
     #[test]
     fn a_star_test(){
-        let found = a_star_search( Vector(0,0), &SearchToGoal{ goal: Vector(3,4)} );
+        let (found,_,_) = a_star_search( Vector(0,0), &SearchToGoal{ goal: Vector(3,4)} );
         assert!( found.is_some() );
         let goal = found.unwrap();
         let path = root_path(&goal);

@@ -1,5 +1,5 @@
 
-use crate::crossteaser::*;
+pub use crate::crossteaser::*;
 use crate::search::*;
 
 
@@ -17,26 +17,46 @@ pub struct BoardSearch{
 }
 
 impl <'a> SearchInfo<Board<'a>> for BoardSearch{
-    fn is_goal(&self, board: &Board<'a>) -> bool{
-        let pieces = board.pieces;
-        let first_non_empty_piece = {
-            if pieces[0][0] != Board::empty(){
-                pieces[0][0]
-            }
-            else{
-                pieces[0][1]
-            }
-        };
 
-        for x in 0..3{
-            for y in 0..3{
-                if pieces[x][y] != Board::empty() && pieces[x][y] != first_non_empty_piece{
-                    return false;
+    fn is_goal(&self, board: &Board<'a> ) -> bool {
+        fn is_goal_any_color(board: &Board) -> bool{
+            let pieces = board.pieces;
+            let first_non_empty_piece = {
+                if pieces[0][0] != Board::empty(){
+                    pieces[0][0]
+                }
+                else{
+                    pieces[0][1]
+                }
+            };
+
+            for x in 0..3{
+                for y in 0..3{
+                    if pieces[x][y] != Board::empty() && pieces[x][y] != first_non_empty_piece{
+                        return false;
+                    }
                 }
             }
+
+            true
         }
 
-        true
+        fn is_goal_as_in_internet_images(board: &Board) -> bool{
+            let pieces = board.pieces;
+            let piece = board.piece_set.get_piece_index_of_initial_piece();
+
+            for x in 0..3{
+                for y in 0..3{
+                    if pieces[x][y] != Board::empty() && pieces[x][y] != piece{
+                        return false;
+                    }
+                }
+            }
+
+            true
+        }
+        
+        is_goal_any_color(board)
     }
 
     fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
@@ -53,12 +73,12 @@ impl <'a> SearchInfo<Board<'a>> for BoardSearch{
 }
 
 
-pub fn scrambled_board<'a>(piece_set: &'a PieceSet, piece_index: usize, steps: usize ) -> Board<'a>{
+pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize ) -> Board<'a>{
     use rand::rngs::StdRng;
     use rand::SeedableRng;
     use rand::Rng;
     
-    let mut board = Board::from_initial(piece_set,piece_index);
+    let mut board = initial_board.clone();
     let mut rng = StdRng::seed_from_u64(1);
     
     for _ in 0..steps{
@@ -95,7 +115,7 @@ mod tests {
         let piece_set = PieceSet::from_piece(&Piece::seed());
         let board = Board::from_initial(&piece_set,0);
         let search = BoardSearch{};
-        let found = a_star_search(board,&search);
+        let (found,_,_) = a_star_search(board,&search);
         assert!(found.is_some());
         assert!(found.unwrap().borrow().state == board);
     }
@@ -105,37 +125,29 @@ mod tests {
 
         fn search_with_step(step: usize){
             let piece_set = PieceSet::from_piece(&Piece::seed());
-            let board = Board::from_initial(&piece_set,0);
-            let scrambled = scrambled_board(&piece_set,0,step);
+            let board = Board::from_initial(&piece_set,piece_set.get_piece_index_of_initial_piece());
+            let scrambled = scrambled_board(&board,step);
 
-            println!("Probando con paso:{} -- {}", step, scrambled);
+            println!("Probando con paso:{} -- board:{} -- scrambled:{}", step, board, scrambled);
             
             let search = BoardSearch{};
-            let found = a_star_search(scrambled,&search);
-            assert!(found.is_some());
+            let (found,_,_) = a_star_search(scrambled,&search);
             let found = found.unwrap();
             assert!(found.borrow().state == board);
 
             let to_root = root_path_state(&found);
-            to_root.iter().for_each( |b| println!("{}",b) );
-            assert!(to_root[to_root.len()-1] == scrambled);
+            //to_root.iter().for_each( |b| println!("{}",b) );
+            to_root.iter().for_each( |b| println!("{}\n\n", b.ascii_art_string()) );
+
             assert!(to_root[0] == board);
+            assert!(to_root[to_root.len()-1] == scrambled);
         }
 
-        #[cfg(not(debug_assertions))]
         let max = 50;
-
-        #[cfg(debug_assertions)]
-        let max = 30;
         
         for step in 1..max{
             search_with_step(step);
         }
         
     }
-
-    
-    
-
-
 }
