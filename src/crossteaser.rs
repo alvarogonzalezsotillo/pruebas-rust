@@ -286,6 +286,12 @@ pub struct Board<'a>{
     pieces : [[usize;3];3],
 }
 
+impl std::fmt::Debug for Board<'_>{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({})", "Debug for Board" )
+    }
+}
+
 impl std::fmt::Display for Board<'_>{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut str : String = "".to_string();

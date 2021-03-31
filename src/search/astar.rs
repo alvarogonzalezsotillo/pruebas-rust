@@ -74,6 +74,14 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
     while let Some(current) = pop(&mut not_expanded_nodes) {
         let state = &current.borrow().state;
 
+        match search_data.max_depth() {
+            Some(max) => if current.borrow().level >= max{
+                continue;
+            }
+            None => {
+            }
+        }
+
         if let Some(already_expanded) = expanded_nodes.get(state){
             //println!("  se expande de segundas: {}", state );
             if already_expanded.borrow().level > current.borrow().level {

@@ -18,6 +18,9 @@ pub trait SearchInfo<T:State>: std::fmt::Debug{
     fn heuristic(&self,_state: &T) -> u64{
         0
     }
+    fn max_depth(&self) -> Option<u64>{
+        None
+    }
     fn expand_state(&self,state:&T) -> Vec<T>;
     fn is_goal(&self,state:&T) -> bool;
 }
@@ -116,6 +119,14 @@ pub fn deep_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : &'a
             return Some(current.clone());
         }
 
+        match search_data.max_depth() {
+            Some(max) => if current.borrow().level >= max{
+                return None
+            }
+            None => {
+            }
+        }
+        
         let children = expand_node(current);
         for child in children{
             let ret = search(&child);
@@ -150,9 +161,16 @@ pub fn breadth_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : 
                 return Some(current_node.clone());
             }
 
-            let children = expand_node(&current_node);
-            for child in children {
-                queue.push_front(child)
+            match search_data.max_depth() {
+                Some(max) => if current_node.borrow().level < max{
+
+                    let children = expand_node(&current_node);
+                    for child in children {
+                        queue.push_front(child)
+                    }
+                }
+                None => {
+                }
             }
         }
         None

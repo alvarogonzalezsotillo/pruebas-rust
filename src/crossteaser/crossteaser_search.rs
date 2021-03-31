@@ -12,65 +12,103 @@ impl <'a> std::hash::Hash for Board<'a>{
 impl <'a> State for Board<'a>{
 }
 
-#[derive(Debug)]
-pub struct BoardSearch{
+
+
+fn is_goal_any_color(board: &Board) -> bool{
+    let pieces = board.pieces;
+    let first_non_empty_piece = {
+        if pieces[0][0] != Board::empty(){
+            pieces[0][0]
+        }
+        else{
+            pieces[0][1]
+        }
+    };
+
+    for x in 0..3{
+        for y in 0..3{
+            if pieces[x][y] != Board::empty() && pieces[x][y] != first_non_empty_piece{
+                return false;
+            }
+        }
+    }
+    true
 }
 
-impl <'a> SearchInfo<Board<'a>> for BoardSearch{
+
+#[derive(Debug)]
+pub struct BoardSearchAnyColor{
+}
+
+impl <'a> SearchInfo<Board<'a>> for BoardSearchAnyColor{
 
     fn is_goal(&self, board: &Board<'a> ) -> bool {
-        fn is_goal_any_color(board: &Board) -> bool{
-            let pieces = board.pieces;
-            let first_non_empty_piece = {
-                if pieces[0][0] != Board::empty(){
-                    pieces[0][0]
-                }
-                else{
-                    pieces[0][1]
-                }
-            };
-
-            for x in 0..3{
-                for y in 0..3{
-                    if pieces[x][y] != Board::empty() && pieces[x][y] != first_non_empty_piece{
-                        return false;
-                    }
-                }
-            }
-
-            true
-        }
-
-        fn is_goal_as_in_internet_images(board: &Board) -> bool{
-            let pieces = board.pieces;
-            let piece = board.piece_set.get_piece_index_of_initial_piece();
-
-            for x in 0..3{
-                for y in 0..3{
-                    if pieces[x][y] != Board::empty() && pieces[x][y] != piece{
-                        return false;
-                    }
-                }
-            }
-
-            true
-        }
-        
         is_goal_any_color(board)
     }
 
     fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
-        board.children().iter().
-            filter( |o| o.is_some() ).
-            map( |o| o.unwrap() ).
-            collect()
+        board.children_filtered()
+    }
+}
+
+#[derive(Debug)]
+pub struct BoardSearchWithGoal<'a>{
+    pub goal: Board<'a>,
+    pub max_depth: Option<u64>
+}
+
+impl <'a> SearchInfo<Board<'a>> for BoardSearchWithGoal<'a>{
+
+    fn is_goal(&self, board: &Board<'a> ) -> bool {
+        board.pieces == self.goal.pieces
     }
 
-    fn heuristic(&self,_state: &Board<'a>) -> u64{
-        0
+    fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
+        board.children_filtered()
     }
     
+    fn max_depth(&self) -> Option<u64>{
+        self.max_depth
+    }
 }
+
+#[derive(Debug)]
+pub struct BoardSearchSomeChanges<'a>{
+    pub goal: Board<'a>,
+    pub max_depth: Option<u64>,
+    pub changes: u8
+        
+}
+
+impl <'a> SearchInfo<Board<'a>> for BoardSearchSomeChanges<'a>{
+
+    fn is_goal(&self, board: &Board<'a> ) -> bool {
+        if board.empty_coords() != self.goal.empty_coords(){
+            return false
+        }
+        let mut changes = 0;
+        
+        for x in 0..3{
+            for y in 0..3{
+                if board.pieces[x][y] != self.goal.pieces[x][y]{
+                   changes += 1;
+                }
+            }
+        }
+        changes == self.changes
+    }
+
+    fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
+        board.children_filtered()
+    }
+    
+    fn max_depth(&self) -> Option<u64>{
+        self.max_depth
+    }
+}
+    
+
+
 
 
 pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize ) -> Board<'a>{
@@ -101,7 +139,7 @@ mod tests {
     #[test]
     fn is_goal(){
         let piece_set = PieceSet::from_piece(&Piece::seed());
-        let search = BoardSearch{};
+        let search = BoardSearchAnyColor{};
 
         for i in 0.. piece_set.pieces.len(){
             let board = Board::from_initial(&piece_set,i);
@@ -114,7 +152,7 @@ mod tests {
     fn root_is_goal() {
         let piece_set = PieceSet::from_piece(&Piece::seed());
         let board = Board::from_initial(&piece_set,0);
-        let search = BoardSearch{};
+        let search = BoardSearchAnyColor{};
         let (found,_,_) = a_star_search(board,&search);
         assert!(found.is_some());
         assert!(found.unwrap().borrow().state == board);
@@ -130,7 +168,7 @@ mod tests {
 
             println!("Probando con paso:{} -- board:{} -- scrambled:{}", step, board, scrambled);
             
-            let search = BoardSearch{};
+            let search = BoardSearchAnyColor{};
             let (found,_,_) = a_star_search(scrambled,&search);
             let found = found.unwrap();
             assert!(found.borrow().state == board);

@@ -30,22 +30,32 @@ fn main() {
         
     let piece_set = PieceSet::from_piece(&Piece::seed());
     let colors : [Option<[Color;2]>;9] = [
-        Some([Y, O]), Some([G, B]), Some([R, P]),
-        Some([O, B]), Some([B, O]), Some([P, O]),
-        None, Some([R, Y]), Some([O, R])
+        Some([Y, R]), Some([Y, R]), Some([Y, R]),
+        Some([Y, R]), None,         Some([Y, R]),
+        Some([Y, R]), Some([Y, R]), Some([Y, R])
     ];
-        
     let board = Board::from_colors(&piece_set, colors);
 
-    let search = BoardSearch{};
+    // let goal_colors : [Option<[Color;2]>;9] = [
+    //     Some([Y, R]), Some([B, G]), Some([Y, R]),
+    //     Some([Y, R]), None,         Some([B, G]),
+    //     Some([Y, R]), Some([Y, R]), Some([Y, R])
+    // ];
+    // let goal = Board::from_colors(&piece_set, goal_colors);
+
+    let search = BoardSearchSomeChanges{
+        goal: board,
+        max_depth: Some(25),
+        changes: 3
+    };
     let (found,_,_) = a_star_search(board,&search);
     assert!(found.is_some());
     let found = found.unwrap();
 
     let to_root = root_path_state(&found);
     to_root.iter().for_each( |b| println!("{}",b) );
-    assert!(to_root[to_root.len()-1] == board);
-
+    to_root.iter().for_each( |b| println!("{}\n\n", b.ascii_art_string()) );
+    
 }
 
 
