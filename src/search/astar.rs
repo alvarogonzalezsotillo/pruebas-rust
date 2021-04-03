@@ -61,6 +61,8 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
     let mut expanded_counter : usize = 0;
     let root_node = O::new(SearchNode::new_root(root,search_data));
 
+    let mut max_visited_level = 0;
+
     let mut not_expanded_nodes : BTreeSet<O<SearchNode<T>>> = BTreeSet::new();
     let mut expanded_nodes : HashMap<T,O<SearchNode<T>>> = HashMap::new();
     
@@ -99,8 +101,12 @@ pub fn a_star_search<'a,T:State + PartialEq + Eq + Display>(root:T,search_data :
         expanded_nodes.insert( state.clone(), current.clone() );
         
         if expanded_counter%1000 == 0{
-            println!("Nodos expandidos: {} Nodos sin expandir:{} Ultimo nivel:{}",
-                     expanded_nodes.len(), not_expanded_nodes.len(), current.borrow().level );
+            // println!("Nodos expandidos: {} Nodos sin expandir:{} Ultimo nivel:{}", expanded_nodes.len(), not_expanded_nodes.len(), current.borrow().level );
+        }
+
+        if current.borrow().level > max_visited_level {
+            max_visited_level = current.borrow().level;
+            println!("Level:{}", max_visited_level);
         }
         
 

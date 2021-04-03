@@ -89,7 +89,9 @@ pub fn root_path<'a,T:State>(node: &'a O<SearchNode<'a,T>> ) -> Vec<O<SearchNode
 
 pub fn root_path_state<'a,T:State>(node: &'a O<SearchNode<'a,T>>) -> Vec<T> {
     let path = root_path(node);
-    path.iter().map( |o| o.borrow().state.clone() ).collect()
+    let mut ret : Vec<T> = path.iter().map( |o| o.borrow().state.clone() ).collect();
+    ret.reverse();
+    ret
 }
 
 

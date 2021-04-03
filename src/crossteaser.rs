@@ -282,7 +282,7 @@ impl Piece{
 
 #[derive(Copy,Clone)]
 pub struct Board<'a>{
-    piece_set : &'a PieceSet,
+    pub piece_set : &'a PieceSet,
     pieces : [[usize;3];3],
 }
 

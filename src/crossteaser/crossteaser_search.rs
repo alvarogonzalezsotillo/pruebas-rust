@@ -14,27 +14,6 @@ impl <'a> State for Board<'a>{
 
 
 
-fn is_goal_any_color(board: &Board) -> bool{
-    let pieces = board.pieces;
-    let first_non_empty_piece = {
-        if pieces[0][0] != Board::empty(){
-            pieces[0][0]
-        }
-        else{
-            pieces[0][1]
-        }
-    };
-
-    for x in 0..3{
-        for y in 0..3{
-            if pieces[x][y] != Board::empty() && pieces[x][y] != first_non_empty_piece{
-                return false;
-            }
-        }
-    }
-    true
-}
-
 
 #[derive(Debug)]
 pub struct BoardSearchAnyColor{
@@ -43,7 +22,24 @@ pub struct BoardSearchAnyColor{
 impl <'a> SearchInfo<Board<'a>> for BoardSearchAnyColor{
 
     fn is_goal(&self, board: &Board<'a> ) -> bool {
-        is_goal_any_color(board)
+        let pieces = board.pieces;
+        let first_non_empty_piece = {
+            if pieces[0][0] != Board::empty(){
+                pieces[0][0]
+            }
+            else{
+                pieces[0][1]
+            }
+        };
+
+        for x in 0..3{
+            for y in 0..3{
+                if pieces[x][y] != Board::empty() && pieces[x][y] != first_non_empty_piece{
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
@@ -73,11 +69,38 @@ impl <'a> SearchInfo<Board<'a>> for BoardSearchWithGoal<'a>{
 }
 
 #[derive(Debug)]
+pub struct BoardSearchLastRow{
+    pub piece_index: usize,
+    pub max_depth: Option<u64>
+}
+
+impl <'a> SearchInfo<Board<'a>> for BoardSearchLastRow{
+
+    fn is_goal(&self, board: &Board<'a> ) -> bool {
+        for x in 0..3{
+            if board.pieces[x][2] != self.piece_index{
+                return false;
+            }
+        }
+        true
+    }
+    
+
+    fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
+        board.children_filtered()
+    }
+    
+    fn max_depth(&self) -> Option<u64>{
+        self.max_depth
+    }
+}
+
+
+#[derive(Debug)]
 pub struct BoardSearchSomeChanges<'a>{
     pub goal: Board<'a>,
     pub max_depth: Option<u64>,
     pub changes: u8
-        
 }
 
 impl <'a> SearchInfo<Board<'a>> for BoardSearchSomeChanges<'a>{
@@ -91,7 +114,7 @@ impl <'a> SearchInfo<Board<'a>> for BoardSearchSomeChanges<'a>{
         for x in 0..3{
             for y in 0..3{
                 if board.pieces[x][y] != self.goal.pieces[x][y]{
-                   changes += 1;
+                    changes += 1;
                 }
             }
         }
@@ -106,8 +129,6 @@ impl <'a> SearchInfo<Board<'a>> for BoardSearchSomeChanges<'a>{
         self.max_depth
     }
 }
-    
-
 
 
 
@@ -161,6 +182,8 @@ mod tests {
     #[test]
     fn search_on_scrambled_board() {
 
+        
+        
         fn search_with_step(step: usize){
             let piece_set = PieceSet::from_piece(&Piece::seed());
             let board = Board::from_initial(&piece_set,piece_set.get_piece_index_of_initial_piece());
