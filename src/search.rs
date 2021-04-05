@@ -160,19 +160,20 @@ pub fn breadth_first_search<'a,T:State + std::fmt::Debug>(root:T, search_data : 
 
             let search_data = current_node.borrow().search;
             if search_data.is_goal(state) {
+                println!("found: state: {:?}", state );
                 return Some(current_node.clone());
             }
 
-            match search_data.max_depth() {
-                Some(max) => if current_node.borrow().level < max{
-
-                    let children = expand_node(&current_node);
-                    for child in children {
-                        queue.push_front(child)
-                    }
+            if let Some(max) = search_data.max_depth(){
+                if current_node.borrow().level >= max {
+                    println!("  max level reached:{}", max );
+                    return None;
                 }
-                None => {
-                }
+            }
+            let children = expand_node(&current_node);
+            for child in children {
+                println!(" child: {:?}", child );
+                queue.push_front(child)
             }
         }
         None
@@ -255,7 +256,9 @@ mod tests{
         let goal = goal.unwrap();
         let path = root_path_state(&goal);
         println!( "{:?}", path );
-        assert!( path[path.len()-1] == root )
+        assert!( path[0] == root );
+        assert!( DummySearch{}.is_goal(&path[path.len()-1]));
+            
     }
 
     
