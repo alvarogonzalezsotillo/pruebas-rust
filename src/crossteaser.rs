@@ -117,6 +117,10 @@ pub struct PieceSet{
 
 impl PieceSet{
 
+    pub fn get_number_of_pieces(&self) -> usize{
+        self.pieces.len()
+    }
+
     pub fn get_piece_index_of_initial_piece(&self) -> usize{
         // EN LAS IMÁGENES DE INTERNET SALE RESUELTO CON AMARILLO Y ROJO
         self.get_piece_index_from_colors(Color::Y,Color::R).unwrap()
@@ -331,8 +335,27 @@ impl <'a> Board<'a>{
             pieces
         }
     }
-    
 
+    pub fn from_piece(piece_set:&'a PieceSet, piece_index: usize ) -> Board<'a> {
+
+        let mut pieces = [[Self::empty();3];3];
+        for i in 0..9{
+            let row = i/3;
+            let col = i%3;
+            pieces[col][row] = piece_index;
+        }
+        pieces[1][1] = Self::empty();
+        
+        Board{
+            piece_set,
+            pieces
+        }
+        
+    }
+
+    pub fn piece(&self, x: usize, y:usize ) -> usize {
+        self.pieces[x][y]
+    }
     
     pub fn coords_to_i8( coords: (usize,usize) ) -> (i8,i8) {
         (coords.0 as i8, coords.1 as i8)
@@ -343,18 +366,26 @@ impl <'a> Board<'a>{
     }
 
     
-    pub fn children(&self) -> Vec<Option<Board<'a>>> {
+    fn children(&self) -> Vec<(Option<Board<'a>>,Direction)> {
         let empty_coords = self.empty_coords();
         Direction::posible_rotations().iter().map(|direction|{
             let coords = direction.opposite().traslate( Self::coords_to_i8(empty_coords) );
-            self.rotate( Self::coords_to_usize(coords), *direction )
+            let new_board = self.rotate( Self::coords_to_usize(coords), *direction );
+            (new_board,*direction)
         }).collect()
     }
 
     pub fn children_filtered(&self) -> Vec<Board<'a>>{
+        self.children_and_directions().iter().
+            map( |pair| pair.0 ).
+            collect()
+    }
+    
+
+    pub fn children_and_directions(&self) -> Vec<(Board<'a>,Direction)>{
         self.children().iter().
-            filter(|c| c.is_some()).
-            map(|c| c.unwrap()).
+            filter(|c| c.0.is_some()).
+            map(|c| (c.0.unwrap(),c.1)).
             collect()
     }
 
@@ -387,6 +418,22 @@ impl <'a> Board<'a>{
 
         b
     }
+
+    pub fn infer_moves( seq: Vec<Board<'a>>) -> Vec<Direction>{
+        let mut ret : Vec<Direction> = Vec::new();
+        for i in 0..seq.len()-2 {
+            let from = seq[i];
+            let to = seq[i+1];
+            let candidates = from.children_and_directions();
+            for c in candidates.iter(){
+                if c.0 == to{
+                    ret.push(c.1)
+                }
+            }
+        }
+        ret
+    }
+    
 
     pub fn ascii_art_string(&self) -> String {
         let ascii_art = self.ascii_art();

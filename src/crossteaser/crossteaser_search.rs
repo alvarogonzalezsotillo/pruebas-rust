@@ -131,6 +131,33 @@ impl <'a> SearchInfo<Board<'a>> for BoardSearchSomeChanges<'a>{
 }
 
 
+#[derive(Debug)]
+pub struct BoardSearchMoveOnlyTwoRows<'a>{
+    pub goal: Board<'a>,
+    pub max_depth: Option<u64>,
+}
+
+impl <'a> SearchInfo<Board<'a>> for BoardSearchMoveOnlyTwoRows<'a>{
+
+    fn is_goal(&self, board: &Board<'a> ) -> bool {
+        board.pieces == self.goal.pieces
+    }
+
+    fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
+        board.children().iter().
+            map(|p| p.0 ).
+            filter(|c| c.is_some()).
+            map(|c| c.unwrap()).
+            filter(|b| b.piece(0,2) == board.piece(0,2) && b.piece(1,2) == board.piece(1,2) && b.piece(2,2) == board.piece(2,2)).
+            collect()
+    }
+    
+    fn max_depth(&self) -> Option<u64>{
+        self.max_depth
+    }
+}
+
+
 
 pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize ) -> Board<'a>{
     use rand::rngs::StdRng;
@@ -200,8 +227,8 @@ mod tests {
             //to_root.iter().for_each( |b| println!("{}",b) );
             to_root.iter().for_each( |b| println!("{}\n\n", b.ascii_art_string()) );
 
-            assert!(to_root[0] == board);
-            assert!(to_root[to_root.len()-1] == scrambled);
+            assert!(to_root[0] == scrambled);
+            assert!(to_root[to_root.len()-1] == board);
         }
 
         let max = 50;

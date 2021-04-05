@@ -240,7 +240,7 @@ mod tests{
         let goal = goal.unwrap();
         let path = root_path_state(&goal);
         println!( "{:?}", path );
-        assert!( path[path.len()-1] == root )
+        assert!( path[0] == root )
         
     }
 
