@@ -27,10 +27,6 @@ impl<T> O<T> {
     pub fn borrow_mut(&self) -> RefMut<T> {
         self.rc.borrow_mut()
     }
-
-    pub fn hola(&self) -> ui8 {
-	
-    }
 }
 
 impl<T: PartialEq> Eq for O<T> {}

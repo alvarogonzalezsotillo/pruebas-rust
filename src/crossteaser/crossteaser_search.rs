@@ -209,16 +209,23 @@ mod tests {
             assert!(found.borrow().state == board);
 
             let to_root = root_path_state(&found);
-            //to_root.iter().for_each( |b| println!("{}",b) );
             to_root
                 .iter()
                 .for_each(|b| println!("{}\n\n", b.ascii_art_string()));
 
             assert!(to_root[0] == scrambled);
             assert!(to_root[to_root.len() - 1] == board);
+
+            println!("INFER MOVES:");
+            let moves = Board::infer_moves_to_empty_position(to_root);
+            let moves = moves.iter().map( |d| d.opposite() ).collect();
+            println!("moves:{:?}",moves);
+            let moved_board = scrambled.apply_moves_to_empty_position(&moves);
+            println!("moved_board:\n{}", moved_board.ascii_art_string() );
+            assert!(moved_board == board);
         }
 
-        let max = 50;
+        let max = 30;
 
         for step in 1..max {
             search_with_step(step);

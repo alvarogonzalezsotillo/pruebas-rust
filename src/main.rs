@@ -77,6 +77,31 @@ fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     return true;
 }
 
+fn busca_dos_diferencias<'a>(board: Board<'a>) -> bool {
+    let max_level = 28;
+    
+    let search_some_changes = BoardSearchSomeChanges {
+        goal: board,
+        max_depth: Some(max_level),
+        changes: 2,
+    };
+
+    let (found, _, _) = a_star_search(board, &search_some_changes);
+    if !found.is_some() {
+        println!("NO HUBO SUERTE1");
+        return false;
+    }
+    let found = found.unwrap();
+    let to_root = root_path_state(&found);
+    to_root
+        .iter()
+        .for_each(|b| println!("{}\n\n", b.ascii_art_string()));
+
+    println!( "{:?}", Board::infer_moves_to_empty_position(to_root) );
+    
+    return true;
+}
+
 fn soluciona_por_niveles<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     println!("GOAL:");
     println!("{}\n\n\n\n", goal.ascii_art_string());
@@ -146,7 +171,8 @@ fn main() {
         let original = Board::from_colors(&piece_set, colors_original);
 
         //soluciona_por_pasos(goal,original);
-        if soluciona_por_niveles(goal, original) {
+        //if soluciona_por_niveles(goal, original) {
+        if busca_dos_diferencias(goal){
             println!("ALBRICIAS!!!!");
             return;
         }
