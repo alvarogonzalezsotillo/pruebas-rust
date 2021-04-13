@@ -333,6 +333,7 @@ impl<'a> Board<'a> {
         for i in 0..9 {
             let row = i / 3;
             let col = i % 3;
+
             pieces[col][row] = piece_index;
         }
         pieces[1][1] = Self::empty();
@@ -410,9 +411,11 @@ impl<'a> Board<'a> {
         b
     }
 
-    pub fn apply_moves_to_empty_position(&self, moves: &Vec<Direction> ) -> Board {
+    pub fn apply_moves_to_empty_position(&self, moves: &Vec<Direction>) -> Board<'a> {
         let mut ret = self.clone();
-        moves.iter().for_each( |d| ret = ret.move_empty_position( *d ).unwrap() );
+        moves
+            .iter()
+            .for_each(|d| ret = ret.move_empty_position(*d).unwrap());
         ret
     }
 
@@ -424,7 +427,7 @@ impl<'a> Board<'a> {
             let candidates = from.children_and_directions();
             for c in candidates.iter() {
                 if c.0 == to {
-                    ret.push(c.1)
+                    ret.push(c.1.opposite());
                 }
             }
             assert_eq!(ret.len(), i + 1);
@@ -488,15 +491,14 @@ impl<'a> Board<'a> {
             && coords.1 <= self.pieces[0].len() as i8
     }
 
-    pub fn move_empty_position( &self, d: Direction ) -> Option<Board<'a>> {
+    pub fn move_empty_position(&self, d: Direction) -> Option<Board<'a>> {
         let empty = self.empty_coords();
         let o = d.opposite();
-        let coords = Board::coords_to_usize( d.traslate(Board::coords_to_i8(empty)) );
-        self.rotate( coords , o )
+        let coords = Board::coords_to_usize(d.traslate(Board::coords_to_i8(empty)));
+        self.rotate(coords, o)
     }
 
     pub fn rotate(&self, coords: (usize, usize), d: Direction) -> Option<Board<'a>> {
-
         //println!( "ROTATE: coords:{:?} d:{:?}", coords, d );
         //println!( "{}", self.ascii_art_string() );
 
@@ -746,17 +748,17 @@ mod tests {
     }
 
     #[test]
-    fn moves_to_empty_position(){
+    fn moves_to_empty_position() {
         let piece_set = PieceSet::from_piece(&Piece::seed());
         let board = Board::from_initial(&piece_set, 0);
 
         let mut b1 = board.move_empty_position(Direction::South).unwrap();
         b1 = b1.move_empty_position(Direction::East).unwrap();
-        println!( "{}\n", b1.ascii_art_string());
+        println!("{}\n", b1.ascii_art_string());
 
-        let b2 = board.apply_moves_to_empty_position( &vec!(Direction::South,Direction::East) );
-        println!( "{}\n", b2.ascii_art_string());
+        let b2 = board.apply_moves_to_empty_position(&vec![Direction::South, Direction::East]);
+        println!("{}\n", b2.ascii_art_string());
 
-        assert!( b1.pieces == b2.pieces )
+        assert!(b1.pieces == b2.pieces)
     }
 }

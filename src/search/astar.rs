@@ -136,7 +136,6 @@ pub fn a_star_search<'a, T: State + PartialEq + Eq + Display>(
 #[cfg(test)]
 mod tests {
     use crate::search::astar::*;
-    use crate::search::*;
     use std::fmt::*;
 
     #[derive(Clone, Hash, Debug, Eq, PartialEq)]

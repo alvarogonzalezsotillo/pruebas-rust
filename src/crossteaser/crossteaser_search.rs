@@ -163,6 +163,15 @@ pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize) -> Board<'a>
     board
 }
 
+pub fn moves_for_change_1_8() -> Vec<Direction> {
+    use Direction::*;
+
+    vec![
+        North, East, South, West, West, South, East, East, North, West, South, East, North, North,
+        West, South, South, West, North, East,
+    ]
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -188,6 +197,41 @@ mod tests {
         let (found, _, _) = a_star_search(board, &search);
         assert!(found.is_some());
         assert!(found.unwrap().borrow().state == board);
+    }
+
+    #[test]
+    fn change_positions_1_8() {
+        let moves = moves_for_change_1_8();
+
+        let piece_set = PieceSet::from_piece(&Piece::seed());
+        let board = Board::from_initial(&piece_set, piece_set.get_piece_index_of_initial_piece());
+
+        let search_2_changes = BoardSearchSomeChanges {
+            goal: board,
+            max_depth: None,
+            changes: 2,
+        };
+
+        let moved = board.apply_moves_to_empty_position(&moves);
+
+        assert!(search_2_changes.is_goal(&moved));
+        println!("{}", moved.ascii_art_string());
+        assert_ne!(board.pieces[1][0], moved.pieces[1][0]);
+        assert_ne!(board.pieces[2][2], moved.pieces[2][2]);
+    }
+
+    #[test]
+    fn change_positions_1_8_until_original() {
+        let piece_set = PieceSet::from_piece(&Piece::seed());
+        let board = Board::from_initial(&piece_set, piece_set.get_piece_index_of_initial_piece());
+
+        let moves = moves_for_change_1_8();
+
+        let mut moved = board.apply_moves_to_empty_position(&moves);
+        while moved.pieces != board.pieces {
+            moved = moved.apply_moves_to_empty_position(&moves).clone();
+            println!("moved");
+        }
     }
 
     #[test]
@@ -218,16 +262,16 @@ mod tests {
 
             println!("INFER MOVES:");
             let moves = Board::infer_moves_to_empty_position(to_root);
-            let moves = moves.iter().map( |d| d.opposite() ).collect();
-            println!("moves:{:?}",moves);
+            let moves = moves.iter().map(|d| d.opposite()).collect();
+            println!("moves:{:?}", moves);
             let moved_board = scrambled.apply_moves_to_empty_position(&moves);
-            println!("moved_board:\n{}", moved_board.ascii_art_string() );
-            assert!(moved_board == board);
+            println!("moved_board:\n{}", moved_board.ascii_art_string());
+            assert_eq!(moved_board, board);
         }
 
         let max = 30;
 
-        for step in 1..max {
+        for step in 10..max {
             search_with_step(step);
         }
     }

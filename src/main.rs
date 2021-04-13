@@ -18,6 +18,7 @@ fn estados_posibles() {
     println!("Estados posibles: {}", piezas_en_8_sitios)
 }
 
+#[allow(dead_code)]
 fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     println!("GOAL:");
     println!("{}\n\n\n\n", goal.ascii_art_string());
@@ -77,6 +78,9 @@ fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     return true;
 }
 
+
+
+#[allow(dead_code)]
 fn busca_dos_diferencias<'a>(board: Board<'a>) -> bool {
     let max_level = 28;
     
@@ -102,6 +106,7 @@ fn busca_dos_diferencias<'a>(board: Board<'a>) -> bool {
     return true;
 }
 
+#[allow(dead_code)]
 fn soluciona_por_niveles<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     println!("GOAL:");
     println!("{}\n\n\n\n", goal.ascii_art_string());
@@ -157,19 +162,18 @@ fn main() {
     for piece_index in 0..piece_set.get_number_of_pieces() {
         let goal = Board::from_piece(&piece_set, piece_index);
 
-        let colors_original: [Option<[Color; 2]>; 9] = [
-            Some([O, P]),
-            Some([R, O]),
-            Some([O, B]),
-            Some([B, G]),
-            None,
-            Some([B, P]),
-            Some([O, R]),
-            Some([Y, B]),
-            Some([Y, R]),
-        ];
-        let original = Board::from_colors(&piece_set, colors_original);
-
+        // let colors_original: [Option<[Color; 2]>; 9] = [
+        //     Some([O, P]),
+        //     Some([R, O]),
+        //     Some([O, B]),
+        //     Some([B, G]),
+        //     None,
+        //     Some([B, P]),
+        //     Some([O, R]),
+        //     Some([Y, B]),
+        //     Some([Y, R]),
+        // ];
+        //let original = Board::from_colors(&piece_set, colors_original);
         //soluciona_por_pasos(goal,original);
         //if soluciona_por_niveles(goal, original) {
         if busca_dos_diferencias(goal){
