@@ -37,7 +37,7 @@ impl Color {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Direction {
     Up = 0,
     North = 1,
@@ -411,11 +411,15 @@ impl<'a> Board<'a> {
         b
     }
 
-    pub fn apply_moves_to_empty_position(&self, moves: &Vec<Direction>) -> Board<'a> {
-        let mut ret = self.clone();
-        moves
-            .iter()
-            .for_each(|d| ret = ret.move_empty_position(*d).unwrap());
+    pub fn apply_moves_to_empty_position(&self, moves: &Vec<Direction>) -> Vec<Board<'a>> {
+        let mut ret = Vec::new();
+        let mut b = self.clone();
+        ret.push(b);
+        for d in moves.iter(){
+            b = b.move_empty_position(*d).unwrap();
+            ret.push(b);
+            println!("-----------{:?}\n{}", *d, b.ascii_art_string() );
+        }
         ret
     }
 
@@ -756,7 +760,7 @@ mod tests {
         b1 = b1.move_empty_position(Direction::East).unwrap();
         println!("{}\n", b1.ascii_art_string());
 
-        let b2 = board.apply_moves_to_empty_position(&vec![Direction::South, Direction::East]);
+        let b2 = board.apply_moves_to_empty_position(&vec![Direction::South, Direction::East]).last().unwrap().clone();
         println!("{}\n", b2.ascii_art_string());
 
         assert!(b1.pieces == b2.pieces)
