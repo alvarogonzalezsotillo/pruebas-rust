@@ -310,6 +310,19 @@ impl PartialEq for Board<'_> {
 }
 
 impl<'a> Board<'a> {
+
+
+    pub fn compute_difs(&self, b: &Board) -> [[bool;3];3]{
+        let mut ret : [[bool;3];3] = [ [false,false,false], [false,false,false], [false,false,false] ];
+        for x in 0..3{
+            for y in 0..3{
+                ret[x][y] = self.pieces[x][y] != b.pieces[x][y];
+            }
+        }
+        ret
+    }
+
+   
     pub fn from_colors(
         piece_set: &'a PieceSet,
         colors_up_north: [Option<[Color; 2]>; 9],
@@ -705,6 +718,30 @@ mod tests {
         assert!(board == Board::from_one_piece(&piece_set, (0, 0), piece_index));
     }
 
+    #[test]
+    fn diffs_of_children() {
+        let piece_set = PieceSet::from_piece(&Piece::seed());
+        let board = Board::from_initial(&piece_set, 0);
+        let children = board.children_filtered();
+
+        for child in children.iter(){
+            let diffs = board.compute_difs(child);
+            println!("board:\n{}\n", board.ascii_art_string());
+            println!("child:\n{}\n", child.ascii_art_string());
+            println!("diffs:{:?}",diffs);
+            let mut count = 0;
+            for x in 0..3{
+                for y in 0..3{
+                    if diffs[x][y]{
+                        count += 1;
+                    }
+                }
+            }
+            assert_eq!(count,2);
+        }
+    }
+
+    
     #[test]
     fn initial_board() {
         let piece_set = PieceSet::from_piece(&Piece::seed());

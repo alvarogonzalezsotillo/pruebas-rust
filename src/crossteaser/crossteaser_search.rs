@@ -117,6 +117,37 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchSomeChanges<'a> {
 }
 
 #[derive(Debug)]
+pub struct BoardSearchExactChanges<'a> {
+    pub goal: Board<'a>,
+    pub max_depth: Option<u64>,
+    pub changes: [[bool; 3]; 3],
+}
+
+impl<'a> SearchInfo<Board<'a>> for BoardSearchExactChanges<'a> {
+    fn is_goal(&self, board: &Board<'a>) -> bool {
+        for x in 0..3 {
+            for y in 0..3 {
+                if !self.changes[x][y] && board.pieces[x][y] != self.goal.pieces[x][y] {
+                    return false;
+                }
+                if self.changes[x][y] && board.pieces[x][y] == self.goal.pieces[x][y] {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
+        board.children_filtered()
+    }
+
+    fn max_depth(&self) -> Option<u64> {
+        self.max_depth
+    }
+}
+
+#[derive(Debug)]
 pub struct BoardSearchMoveOnlyTwoRows<'a> {
     pub goal: Board<'a>,
     pub max_depth: Option<u64>,
@@ -166,18 +197,31 @@ pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize) -> Board<'a>
 pub fn moves_for_change_1_8() -> Vec<Direction> {
     use Direction::*;
 
-    
     vec![
         North, East, South, West, West, South, East, East, North, West, South, East, North, North,
         West, South, South, West, North, East,
     ]
+}
 
-        /*
-    vec![
-        South, West, North, East, East, North, West, West, South, East, North, West, South, South,
-        East, North, North, East, South, West,
-    ]
-     */
+pub fn moves_for_changes(diffs: [[bool; 3]; 3], max_depth: u64) -> Option<Vec<Direction>> {
+    use crate::search::astar::*;
+    let piece_set = PieceSet::from_piece(&Piece::seed());
+    let board = Board::from_initial(&piece_set, piece_set.get_piece_index_of_initial_piece());
+    let search = BoardSearchExactChanges {
+        goal: board,
+        max_depth: Some(max_depth),
+        changes: diffs,
+    };
+    let (found, _, _) = a_star_search(board, &search);
+
+    match found {
+        None => None,
+        Some(found) => {
+            let to_root = root_path_state(&found);
+            let moves = Board::infer_moves_to_empty_position(to_root);
+            Some(moves)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -226,7 +270,7 @@ mod tests {
             .unwrap()
             .clone();
 
-        println!( "moved:\n{}", moved.ascii_art_string() );
+        println!("moved:\n{}", moved.ascii_art_string());
 
         assert!(search_2_changes.is_goal(&moved));
         println!("{}", moved.ascii_art_string());
@@ -269,6 +313,37 @@ mod tests {
                 .unwrap()
                 .clone();
             println!("moved");
+        }
+    }
+
+    #[test]
+    fn moves_for_two_changes() {
+
+        fn diffs_for_changes(c1: usize, c2: usize ) -> [[bool;3];3] {
+            let mut ret : [[bool;3];3] = [[false,false,false],[false,false,false],[false,false,false]];
+            for x in 0..3{
+                for y in 0..3 {
+                    let p = x*3 + y;
+                    ret[x][y] = p == c1 || p == c2;
+                }
+            }
+            ret
+        }
+
+        // POSICIONES SIN ROTACIONES NI REFLEXIONES
+        let changes = [ [0,1], [0,2], [0,5], [0,8], [1,3]];
+        
+        for [change_1,change_2] in changes.iter() {
+            let diffs = diffs_for_changes(*change_1, *change_2);
+            let moves = moves_for_changes(diffs, 25);
+            match moves{
+                None => {
+                    println!("Diffs:{} {} no moves", change_1, change_2 );
+                }
+                Some(moves) => {
+                    println!("Diffs:{} {} Moves:{:?}", change_1, change_2, moves);
+                }
+            }
         }
     }
 

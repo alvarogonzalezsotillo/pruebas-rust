@@ -162,21 +162,21 @@ fn main() {
     for piece_index in 0..piece_set.get_number_of_pieces() {
         let goal = Board::from_piece(&piece_set, piece_index);
 
-        // let colors_original: [Option<[Color; 2]>; 9] = [
-        //     Some([O, P]),
-        //     Some([R, O]),
-        //     Some([O, B]),
-        //     Some([B, G]),
-        //     None,
-        //     Some([B, P]),
-        //     Some([O, R]),
-        //     Some([Y, B]),
-        //     Some([Y, R]),
-        // ];
-        //let original = Board::from_colors(&piece_set, colors_original);
-        //soluciona_por_pasos(goal,original);
-        //if soluciona_por_niveles(goal, original) {
-        if busca_dos_diferencias(goal){
+        let colors_original: [Option<[Color; 2]>; 9] = [
+            Some([O, P]),
+            Some([R, O]),
+            Some([O, B]),
+            Some([B, G]),
+            None,
+            Some([B, P]),
+            Some([O, R]),
+            Some([Y, B]),
+            Some([Y, R]),
+        ];
+        let original = Board::from_colors(&piece_set, colors_original);
+        soluciona_por_pasos(goal,original);
+        if soluciona_por_niveles(goal, original) {
+        //if busca_dos_diferencias(goal){
             println!("ALBRICIAS!!!!");
             return;
         }
