@@ -431,7 +431,7 @@ impl<'a> Board<'a> {
         for d in moves.iter(){
             b = b.move_empty_position(*d).unwrap();
             ret.push(b);
-            println!("-----------{:?}\n{}", *d, b.ascii_art_string() );
+            //println!("-----------{:?}\n{}", *d, b.ascii_art_string() );
         }
         ret
     }

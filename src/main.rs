@@ -18,6 +18,25 @@ fn estados_posibles() {
     println!("Estados posibles: {}", piezas_en_8_sitios)
 }
 
+fn aproxima<'a,'b>(goal: Board<'a>, board: Board<'a>, changes: u8, max_level: u64 ) -> Option<(Vec<Direction>,Board<'a>)> {
+    let search_some_changes = BoardSearchSomeChanges {
+        goal: goal,
+        max_depth: Some(max_level),
+        changes: changes,
+    };
+    let (found, _, _) = a_star_search(board, &search_some_changes);
+    match found{
+        None => {
+            None
+        }
+        Some(found) => {
+            let to_root = root_path_state(&found);
+            let moves = Board::infer_moves_to_empty_position(to_root);
+            Some( (moves, found.borrow().state.clone()) )
+        }
+    }
+}
+
 #[allow(dead_code)]
 fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     println!("GOAL:");
@@ -25,128 +44,54 @@ fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
 
     let max_level = 28;
 
-    let search_last_row = BoardSearchLastRow {
-        piece_index: goal.piece(0, 0),
-        max_depth: Some(max_level),
-    };
-    let (found, _, _) = a_star_search(board, &search_last_row);
-    if !found.is_some() {
-        println!("NO HUBO SUERTE1");
+    let aproximacion = aproxima(goal,board,3,max_level);
+    if aproximacion.is_none(){
+        println!("No hay aproximación a 3");
         return false;
     }
-    let found = found.unwrap();
-    let to_root = root_path_state(&found);
-    to_root
-        .iter()
-        .for_each(|b| println!("{}\n\n", b.ascii_art_string()));
-    println!("1******************************************************");
+    let aproximacion = aproximacion.unwrap();
+    println!("Aproximación a 3:{:?}", aproximacion.0 );
+    println!("{}\n\n", aproximacion.1.ascii_art_string() );
 
-    let search_some_changes = BoardSearchSomeChanges {
-        goal: goal,
-        max_depth: Some(max_level),
-        changes: 2,
-    };
-    let (found, _, _) = a_star_search(found.borrow().state, &search_some_changes);
-    if !found.is_some() {
-        println!("NO HUBO SUERTE2");
+
+    let aproximacion = aproxima(goal,aproximacion.1,2,max_level);
+    if aproximacion.is_none(){
+        println!("No hay aproximación a 2");
         return false;
     }
-    let found = found.unwrap();
-    let to_root = root_path_state(&found);
-    to_root
-        .iter()
-        .for_each(|b| println!("{}\n\n", b.ascii_art_string()));
-    println!("2******************************************************");
+    let aproximacion = aproximacion.unwrap();
+    println!("Aproximación a 2:{:?}", aproximacion.0 );
+    println!("{}\n\n", aproximacion.1.ascii_art_string() );
 
-    let search_some_changes = BoardSearchSomeChanges {
-        goal: goal,
-        max_depth: Some(max_level),
-        changes: 0,
-    };
-    let (found, _, _) = a_star_search(found.borrow().state, &search_some_changes);
-    if !found.is_some() {
-        println!("NO HUBO SUERTE3");
+    let diffs = goal.compute_difs(&aproximacion.1);
+    let moves = moves_for_changes(diffs, max_level);
+    if moves.is_none(){
+        println!("No hay movimientos para diferencias finales: {:?}", diffs );
         return false;
     }
-    let found = found.unwrap();
-    let to_root = root_path_state(&found);
-    to_root
-        .iter()
-        .for_each(|b| println!("{}\n\n", b.ascii_art_string()));
-    println!("3******************************************************");
 
-    return true;
-}
+    let moves = moves.unwrap();
+    let board_copy = aproximacion.1.clone();
+    let mut current = board_copy.apply_moves_to_empty_position(&moves).
+        last().
+        unwrap().clone();
+    println!("Aplico rotación para diferencias finales: {:?}", moves );
+    while current != board_copy{
+        current = current.apply_moves_to_empty_position(&moves).
+            last().
+            unwrap().clone();
+        println!("Aplico rotación para diferencias finales: {:?}", moves );
 
-
-
-#[allow(dead_code)]
-fn busca_dos_diferencias<'a>(board: Board<'a>) -> bool {
-    let max_level = 28;
+        if current == goal{
+            return true;
+        }
+    }
     
-    let search_some_changes = BoardSearchSomeChanges {
-        goal: board,
-        max_depth: Some(max_level),
-        changes: 2,
-    };
-
-    let (found, _, _) = a_star_search(board, &search_some_changes);
-    if !found.is_some() {
-        println!("NO HUBO SUERTE1");
-        return false;
-    }
-    let found = found.unwrap();
-    let to_root = root_path_state(&found);
-    to_root
-        .iter()
-        .for_each(|b| println!("{}\n\n", b.ascii_art_string()));
-
-    println!( "{:?}", Board::infer_moves_to_empty_position(to_root) );
-    
-    return true;
-}
-
-#[allow(dead_code)]
-fn soluciona_por_niveles<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
-    println!("GOAL:");
-    println!("{}\n\n\n\n", goal.ascii_art_string());
-
-    let max_level = 28;
-
-    let search_last_row = BoardSearchLastRow {
-        piece_index: goal.piece(0, 0),
-        max_depth: Some(max_level),
-    };
-    let (found, _, _) = a_star_search(board, &search_last_row);
-    if !found.is_some() {
-        println!("NO HUBO SUERTE1");
-        return false;
-    }
-    let found = found.unwrap();
-    let to_root = root_path_state(&found);
-    to_root
-        .iter()
-        .for_each(|b| println!("{}\n\n", b.ascii_art_string()));
-    println!("1******************************************************");
-
-    let search_two_rows = BoardSearchMoveOnlyTwoRows {
-        goal: goal,
-        max_depth: Some(68),
-    };
-    let (found, _, _) = a_star_search(found.borrow().state, &search_two_rows);
-    if !found.is_some() {
-        println!("NO HUBO SUERTE2");
-        return false;
-    }
-    let found = found.unwrap();
-    let to_root = root_path_state(&found);
-    to_root
-        .iter()
-        .for_each(|b| println!("{}\n\n", b.ascii_art_string()));
-    println!("2******************************************************");
+    println!("La rotación final no ha tenido éxito" );
 
     return true;
 }
+
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -174,9 +119,7 @@ fn main() {
             Some([Y, R]),
         ];
         let original = Board::from_colors(&piece_set, colors_original);
-        soluciona_por_pasos(goal,original);
-        if soluciona_por_niveles(goal, original) {
-        //if busca_dos_diferencias(goal){
+        if soluciona_por_pasos(goal, original) {
             println!("ALBRICIAS!!!!");
             return;
         }
