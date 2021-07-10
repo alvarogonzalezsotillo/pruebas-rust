@@ -9,9 +9,9 @@ impl<'a> std::hash::Hash for Board<'a> {
 
 impl<'a> State for Board<'a> {}
 
+
 #[derive(Debug)]
 pub struct BoardSearchAnyColor {}
-
 impl<'a> SearchInfo<Board<'a>> for BoardSearchAnyColor {
     fn is_goal(&self, board: &Board<'a>) -> bool {
         let pieces = board.pieces;
@@ -32,7 +32,6 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchAnyColor {
         }
         true
     }
-
     fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
         board.children_filtered()
     }
@@ -58,30 +57,6 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchWithGoal<'a> {
     }
 }
 
-#[derive(Debug)]
-pub struct BoardSearchLastRow {
-    pub piece_index: usize,
-    pub max_depth: Option<u64>,
-}
-
-impl<'a> SearchInfo<Board<'a>> for BoardSearchLastRow {
-    fn is_goal(&self, board: &Board<'a>) -> bool {
-        for x in 0..3 {
-            if board.pieces[x][2] != self.piece_index {
-                return false;
-            }
-        }
-        true
-    }
-
-    fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
-        board.children_filtered()
-    }
-
-    fn max_depth(&self) -> Option<u64> {
-        self.max_depth
-    }
-}
 
 #[derive(Debug)]
 pub struct BoardSearchSomeChanges<'a> {
@@ -138,6 +113,10 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchExactChanges<'a> {
         true
     }
 
+    fn heuristic(&self, _state: &Board<'a>) -> u64 {
+        0
+    }
+
     fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
         board.children_filtered()
     }
@@ -147,36 +126,36 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchExactChanges<'a> {
     }
 }
 
+
 #[derive(Debug)]
-pub struct BoardSearchMoveOnlyTwoRows<'a> {
-    pub goal: Board<'a>,
-    pub max_depth: Option<u64>,
+pub struct BoardSearchCustomMoves<'a> {
+    pub delegate: &'a dyn SearchInfo<Board<'a>>,
+    pub moves: Vec<Vec<Direction>>
 }
 
-impl<'a> SearchInfo<Board<'a>> for BoardSearchMoveOnlyTwoRows<'a> {
+impl<'a> SearchInfo<Board<'a>> for BoardSearchCustomMoves<'a> {
     fn is_goal(&self, board: &Board<'a>) -> bool {
-        board.pieces == self.goal.pieces
+        self.delegate.is_goal(board)
+    }
+
+    fn heuristic(&self, state: &Board<'a>) -> u64 {
+        self.delegate.heuristic(state)
     }
 
     fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
-        board
-            .children()
-            .iter()
-            .map(|p| p.0)
-            .filter(|c| c.is_some())
-            .map(|c| c.unwrap())
-            .filter(|b| {
-                b.piece(0, 2) == board.piece(0, 2)
-                    && b.piece(1, 2) == board.piece(1, 2)
-                    && b.piece(2, 2) == board.piece(2, 2)
-            })
-            .collect()
+        self.moves.
+            iter().
+            map( |moves| board.apply_moves_to_empty_position_get_last(moves) ).
+            map( |b| b.clone_with_pieceset(board.piece_set) ).
+            collect()
     }
 
     fn max_depth(&self) -> Option<u64> {
-        self.max_depth
+        self.delegate.max_depth()
     }
 }
+
+
 
 pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize) -> Board<'a> {
     use rand::rngs::StdRng;
@@ -318,12 +297,15 @@ mod tests {
 
     #[test]
     fn moves_for_two_changes() {
-
-        fn diffs_for_changes(c1: usize, c2: usize ) -> [[bool;3];3] {
-            let mut ret : [[bool;3];3] = [[false,false,false],[false,false,false],[false,false,false]];
-            for x in 0..3{
+        fn diffs_for_changes(c1: usize, c2: usize) -> [[bool; 3]; 3] {
+            let mut ret: [[bool; 3]; 3] = [
+                [false, false, false],
+                [false, false, false],
+                [false, false, false],
+            ];
+            for x in 0..3 {
                 for y in 0..3 {
-                    let p = x*3 + y;
+                    let p = x * 3 + y;
                     ret[x][y] = p == c1 || p == c2;
                 }
             }
@@ -331,14 +313,14 @@ mod tests {
         }
 
         // POSICIONES SIN ROTACIONES NI REFLEXIONES
-        let changes = [ [0,1], [0,2], [0,5], [0,8], [1,3]];
-        
-        for [change_1,change_2] in changes.iter() {
+        let changes = [[0, 1], [0, 2], [0, 5], [0, 8], [1, 3]];
+
+        for [change_1, change_2] in changes.iter() {
             let diffs = diffs_for_changes(*change_1, *change_2);
             let moves = moves_for_changes(diffs, 25);
-            match moves{
+            match moves {
                 None => {
-                    println!("Diffs:{} {} no moves", change_1, change_2 );
+                    println!("Diffs:{} {} no moves", change_1, change_2);
                 }
                 Some(moves) => {
                     println!("Diffs:{} {} Moves:{:?}", change_1, change_2, moves);

@@ -310,19 +310,20 @@ impl PartialEq for Board<'_> {
 }
 
 impl<'a> Board<'a> {
-
-
-    pub fn compute_difs(&self, b: &Board) -> [[bool;3];3]{
-        let mut ret : [[bool;3];3] = [ [false,false,false], [false,false,false], [false,false,false] ];
-        for x in 0..3{
-            for y in 0..3{
+    pub fn compute_difs(&self, b: &Board) -> [[bool; 3]; 3] {
+        let mut ret: [[bool; 3]; 3] = [
+            [false, false, false],
+            [false, false, false],
+            [false, false, false],
+        ];
+        for x in 0..3 {
+            for y in 0..3 {
                 ret[x][y] = self.pieces[x][y] != b.pieces[x][y];
             }
         }
         ret
     }
 
-   
     pub fn from_colors(
         piece_set: &'a PieceSet,
         colors_up_north: [Option<[Color; 2]>; 9],
@@ -424,11 +425,18 @@ impl<'a> Board<'a> {
         b
     }
 
+    pub fn apply_moves_to_empty_position_get_last( &self, moves: &Vec<Direction>) -> Board<'_> {
+        self.apply_moves_to_empty_position(&moves)
+            .last()
+            .unwrap()
+            .clone()
+    }
+    
     pub fn apply_moves_to_empty_position(&self, moves: &Vec<Direction>) -> Vec<Board<'a>> {
         let mut ret = Vec::new();
         let mut b = self.clone();
         ret.push(b);
-        for d in moves.iter(){
+        for d in moves.iter() {
             b = b.move_empty_position(*d).unwrap();
             ret.push(b);
             //println!("-----------{:?}\n{}", *d, b.ascii_art_string() );
@@ -469,6 +477,10 @@ impl<'a> Board<'a> {
         Board { piece_set, pieces }
     }
 
+    pub fn  clone_with_pieceset<'b>( &self, piece_set: &'b PieceSet ) -> Board<'b> {
+        Board { piece_set: piece_set, pieces: self.pieces }
+    }
+    
     pub fn from_initial(piece_set: &'a PieceSet, piece_index: usize) -> Board<'a> {
         let mut pieces = [[Self::empty(); 3]; 3];
         for x in 0..3 {
@@ -724,24 +736,23 @@ mod tests {
         let board = Board::from_initial(&piece_set, 0);
         let children = board.children_filtered();
 
-        for child in children.iter(){
+        for child in children.iter() {
             let diffs = board.compute_difs(child);
             println!("board:\n{}\n", board.ascii_art_string());
             println!("child:\n{}\n", child.ascii_art_string());
-            println!("diffs:{:?}",diffs);
+            println!("diffs:{:?}", diffs);
             let mut count = 0;
-            for x in 0..3{
-                for y in 0..3{
-                    if diffs[x][y]{
+            for x in 0..3 {
+                for y in 0..3 {
+                    if diffs[x][y] {
                         count += 1;
                     }
                 }
             }
-            assert_eq!(count,2);
+            assert_eq!(count, 2);
         }
     }
 
-    
     #[test]
     fn initial_board() {
         let piece_set = PieceSet::from_piece(&Piece::seed());
@@ -797,7 +808,11 @@ mod tests {
         b1 = b1.move_empty_position(Direction::East).unwrap();
         println!("{}\n", b1.ascii_art_string());
 
-        let b2 = board.apply_moves_to_empty_position(&vec![Direction::South, Direction::East]).last().unwrap().clone();
+        let b2 = board
+            .apply_moves_to_empty_position(&vec![Direction::South, Direction::East])
+            .last()
+            .unwrap()
+            .clone();
         println!("{}\n", b2.ascii_art_string());
 
         assert!(b1.pieces == b2.pieces)

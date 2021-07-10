@@ -9,6 +9,7 @@ use crate::crossteaser::crossteaser_search::*;
 use crate::search::astar::*;
 use crate::search::*;
 
+
 fn estados_posibles() {
     let posiciones_de_una_pieza = 6.0 * 4.0;
     let mut piezas_en_8_sitios = 1.0;
@@ -18,11 +19,23 @@ fn estados_posibles() {
     println!("Estados posibles: {}", piezas_en_8_sitios)
 }
 
-fn aproxima<'a,'b>(goal: Board<'a>, board: Board<'a>, changes: u8, max_level: u64 ) -> Option<(Vec<Direction>,Board<'a>)> {
+fn aproxima<'a>(goal: Board<'a>, board: Board<'a>, changes: u8, max_level: u64 ) -> Option<(Vec<Direction>,Board<'a>)> {
+
+    use Direction::*;
+    
     let search_some_changes = BoardSearchSomeChanges {
         goal: goal,
         max_depth: Some(max_level),
         changes: changes,
+    };
+    let delegate = BoardSearchCustomMoves{
+        delegate: &search_some_changes,
+        moves: vec![
+            vec![North],
+            vec![South],
+            vec![East],
+            vec![West],
+        ],
     };
     let (found, _, _) = a_star_search(board, &search_some_changes);
     match found{
@@ -32,7 +45,13 @@ fn aproxima<'a,'b>(goal: Board<'a>, board: Board<'a>, changes: u8, max_level: u6
         Some(found) => {
             let to_root = root_path_state(&found);
             let moves = Board::infer_moves_to_empty_position(to_root);
-            Some( (moves, found.borrow().state.clone()) )
+            let ret_board = found.borrow().state.clone_with_pieceset(goal.piece_set);
+            Some(
+                (
+                    moves,
+                    ret_board
+                )
+            )
         }
     }
 }
@@ -89,7 +108,7 @@ fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     
     println!("La rotación final no ha tenido éxito" );
 
-    return true;
+    return false;
 }
 
 
