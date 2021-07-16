@@ -425,23 +425,25 @@ impl<'a> Board<'a> {
         b
     }
 
-    pub fn apply_moves_to_empty_position_get_last( &self, moves: &Vec<Direction>) -> Board<'_> {
-        self.apply_moves_to_empty_position(&moves)
-            .last()
-            .unwrap()
-            .clone()
+    pub fn apply_moves_to_empty_position_get_last( &self, moves: &Vec<Direction>) -> Option<Board<'_>> {
+        self.apply_moves_to_empty_position(&moves).map( |vec| vec.last().unwrap().clone() )
     }
     
-    pub fn apply_moves_to_empty_position(&self, moves: &Vec<Direction>) -> Vec<Board<'a>> {
+    pub fn apply_moves_to_empty_position(&self, moves: &Vec<Direction>) -> Option<Vec<Board<'a>>> {
         let mut ret = Vec::new();
         let mut b = self.clone();
         ret.push(b);
         for d in moves.iter() {
-            b = b.move_empty_position(*d).unwrap();
-            ret.push(b);
-            //println!("-----------{:?}\n{}", *d, b.ascii_art_string() );
+            let maybe_board = b.move_empty_position(*d);
+            if maybe_board.is_some(){
+                b = maybe_board.unwrap();
+                ret.push(b);
+            }
+            else{
+                return None
+            }
         }
-        ret
+        Some(ret)
     }
 
     pub fn infer_moves_to_empty_position(seq: Vec<Board<'a>>) -> Vec<Direction> {
@@ -810,6 +812,7 @@ mod tests {
 
         let b2 = board
             .apply_moves_to_empty_position(&vec![Direction::South, Direction::East])
+            .unwrap()
             .last()
             .unwrap()
             .clone();

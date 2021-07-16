@@ -19,24 +19,66 @@ fn estados_posibles() {
     println!("Estados posibles: {}", piezas_en_8_sitios)
 }
 
+fn resuelve_016<'a>(goal: Board<'a>, board: Board<'a>, max_level: u64 ) -> bool {
+
+    
+    let search_exact_changes = BoardSearchExactChanges {
+        goal: goal,
+        max_depth: Some(max_level),
+        changes: [ [true,true,false], [false,false,false], [true,true,false] ]
+    };
+    let (found, _, _) = a_star_search(board, &search_exact_changes);
+    if found.is_none(){
+        println!( "Sin aproximación a 016");
+        return false;
+    }
+    let board_up_to_016 = found.unwrap().borrow().state;
+    println!( "Aproximación a 016:\n{}", board_up_to_016.ascii_art_string() );
+
+    let move_0167 = moves_for_changes( [[true,true,false], [false,false,false], [true,true,false]], max_level );
+    let move_016 = moves_for_changes( [[true,true,false], [false,false,false], [true,false,false]], max_level );
+    let move_167 = moves_for_changes( [[false,true,false], [false,false,false], [true,true,false]], max_level );
+    let move_16 = moves_for_changes( [[false,true,false], [false,false,false], [true,false,false]], max_level );
+    let move_01 = moves_for_changes( [[true,true,false], [false,false,false], [false,false,false]], max_level );
+    let move_67 = moves_for_changes( [[false,false,false], [false,false,false], [true,true,false]], max_level );
+    let delegate = BoardSearchCustomMoves{
+        delegate: &BoardSearchWithGoal{
+            goal: goal,
+            max_depth: Some(max_level)
+        },
+        moves: vec![
+            move_0167.unwrap(),
+            move_016.unwrap(),
+            move_167.unwrap(),
+            move_16.unwrap(),
+            move_01.unwrap(),
+            move_67.unwrap(),
+        ],
+    };
+    println!("Tengo todas las aproximaciones finales");
+    let (found, _, _) = a_star_search(board_up_to_016, &delegate);
+    match found{
+        None => {
+            false
+        }
+        Some(found) => {
+            let to_root = root_path_state(&found);
+            println!("SOLUCION ENCONTRADA:\n");
+            to_root.iter().for_each( |b| println!("{}\n\n",b.ascii_art_string()) );
+            true
+        }
+    }
+}
+
+
 fn aproxima<'a>(goal: Board<'a>, board: Board<'a>, changes: u8, max_level: u64 ) -> Option<(Vec<Direction>,Board<'a>)> {
 
-    use Direction::*;
-    
     let search_some_changes = BoardSearchSomeChanges {
         goal: goal,
         max_depth: Some(max_level),
         changes: changes,
     };
-    let delegate = BoardSearchCustomMoves{
-        delegate: &search_some_changes,
-        moves: vec![
-            vec![North],
-            vec![South],
-            vec![East],
-            vec![West],
-        ],
-    };
+
     let (found, _, _) = a_star_search(board, &search_some_changes);
     match found{
         None => {
@@ -44,6 +86,8 @@ fn aproxima<'a>(goal: Board<'a>, board: Board<'a>, changes: u8, max_level: u64 )
         }
         Some(found) => {
             let to_root = root_path_state(&found);
+            println!("APROXIMACION ENCONTRADA:\n");
+            to_root.iter().for_each( |b| println!("{}\n\n",b.ascii_art_string()) );
             let moves = Board::infer_moves_to_empty_position(to_root);
             let ret_board = found.borrow().state.clone_with_pieceset(goal.piece_set);
             Some(
@@ -61,6 +105,9 @@ fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     println!("GOAL:");
     println!("{}\n\n\n\n", goal.ascii_art_string());
 
+    println!("BOARD:");
+    println!("{}\n\n\n\n", board.ascii_art_string());
+    
     let max_level = 28;
 
     let aproximacion = aproxima(goal,board,3,max_level);
@@ -92,11 +139,13 @@ fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
     let moves = moves.unwrap();
     let board_copy = aproximacion.1.clone();
     let mut current = board_copy.apply_moves_to_empty_position(&moves).
+        unwrap().
         last().
         unwrap().clone();
     println!("Aplico rotación para diferencias finales: {:?}", moves );
     while current != board_copy{
         current = current.apply_moves_to_empty_position(&moves).
+            unwrap().
             last().
             unwrap().clone();
         println!("Aplico rotación para diferencias finales: {:?}", moves );
@@ -112,6 +161,7 @@ fn soluciona_por_pasos<'a>(goal: Board<'a>, board: Board<'a>) -> bool {
 }
 
 
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     println!("Los argumentos son: {:?}", args);
@@ -123,7 +173,8 @@ fn main() {
 
     let piece_set = PieceSet::from_piece(&Piece::seed());
 
-    for piece_index in 0..piece_set.get_number_of_pieces() {
+    for piece_index in 1..piece_set.get_number_of_pieces() {
+        println!("Probando con pieza número:{}", piece_index );
         let goal = Board::from_piece(&piece_set, piece_index);
 
         let colors_original: [Option<[Color; 2]>; 9] = [
@@ -138,9 +189,10 @@ fn main() {
             Some([Y, R]),
         ];
         let original = Board::from_colors(&piece_set, colors_original);
-        if soluciona_por_pasos(goal, original) {
+        if resuelve_016(goal, original, 26 ) {
             println!("ALBRICIAS!!!!");
             return;
         }
+        return;
     }
 }

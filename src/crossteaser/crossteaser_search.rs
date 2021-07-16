@@ -9,7 +9,6 @@ impl<'a> std::hash::Hash for Board<'a> {
 
 impl<'a> State for Board<'a> {}
 
-
 #[derive(Debug)]
 pub struct BoardSearchAnyColor {}
 impl<'a> SearchInfo<Board<'a>> for BoardSearchAnyColor {
@@ -56,7 +55,6 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchWithGoal<'a> {
         self.max_depth
     }
 }
-
 
 #[derive(Debug)]
 pub struct BoardSearchSomeChanges<'a> {
@@ -126,11 +124,10 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchExactChanges<'a> {
     }
 }
 
-
 #[derive(Debug)]
 pub struct BoardSearchCustomMoves<'a> {
     pub delegate: &'a dyn SearchInfo<Board<'a>>,
-    pub moves: Vec<Vec<Direction>>
+    pub moves: Vec<Vec<Direction>>,
 }
 
 impl<'a> SearchInfo<Board<'a>> for BoardSearchCustomMoves<'a> {
@@ -143,19 +140,18 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchCustomMoves<'a> {
     }
 
     fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
-        self.moves.
-            iter().
-            map( |moves| board.apply_moves_to_empty_position_get_last(moves) ).
-            map( |b| b.clone_with_pieceset(board.piece_set) ).
-            collect()
+        self.moves
+            .iter()
+            .map(|moves| board.apply_moves_to_empty_position_get_last(moves))
+            .filter(|b| b.is_some())
+            .map(|b| b.unwrap().clone_with_pieceset(board.piece_set))
+            .collect()
     }
 
     fn max_depth(&self) -> Option<u64> {
         self.delegate.max_depth()
     }
 }
-
-
 
 pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize) -> Board<'a> {
     use rand::rngs::StdRng;
@@ -174,12 +170,22 @@ pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize) -> Board<'a>
 }
 
 pub fn moves_for_change_1_8() -> Vec<Direction> {
-    use Direction::*;
+    moves_for_changes( indexes_to_changes(&vec!(1,8)),26 ).unwrap()
+}
 
-    vec![
-        North, East, South, West, West, South, East, East, North, West, South, East, North, North,
-        West, South, South, West, North, East,
-    ]
+pub fn indexes_to_changes( indexes: &Vec<u64> ) -> [[bool; 3];3] {
+    let mut diffs: [[bool; 3]; 3] = [
+        [false, false, false],
+        [false, false, false],
+        [false, false, false],
+    ];
+    for i in 0..3 {
+        for j in 0..3 {
+            let index = (i * 3 + j) as u64;
+            diffs[i][j] = indexes.contains(&index);
+        }
+    }
+    diffs
 }
 
 pub fn moves_for_changes(diffs: [[bool; 3]; 3], max_depth: u64) -> Option<Vec<Direction>> {
@@ -208,6 +214,14 @@ mod tests {
 
     use crate::crossteaser::crossteaser_search::*;
     use crate::search::astar::*;
+
+
+    fn assert_moves<'a>( from: &Board<'a>, moves: &Vec<Direction>, to: Board ) -> bool {
+        let candidate = from.apply_moves_to_empty_position_get_last(moves);
+        assert!(candidate.is_some());
+        let candidate = candidate.unwrap();
+        candidate.pieces == to.pieces
+    }
 
     #[test]
     fn is_goal() {
@@ -245,6 +259,7 @@ mod tests {
 
         let moved = board
             .apply_moves_to_empty_position(&moves)
+            .unwrap()
             .last()
             .unwrap()
             .clone();
@@ -266,7 +281,8 @@ mod tests {
 
         let moved_boards = board.apply_moves_to_empty_position(&moves);
 
-        let inferred_moves: Vec<Direction> = Board::infer_moves_to_empty_position(moved_boards);
+        let inferred_moves: Vec<Direction> =
+            Board::infer_moves_to_empty_position(moved_boards.unwrap());
 
         assert_eq!(moves.len(), inferred_moves.len());
 
@@ -282,12 +298,14 @@ mod tests {
 
         let mut moved = board
             .apply_moves_to_empty_position(&moves)
+            .unwrap()
             .last()
             .unwrap()
             .clone();
         while moved.pieces != board.pieces {
             moved = moved
                 .apply_moves_to_empty_position(&moves)
+                .unwrap()
                 .last()
                 .unwrap()
                 .clone();
@@ -297,35 +315,19 @@ mod tests {
 
     #[test]
     fn moves_for_two_changes() {
-        fn diffs_for_changes(c1: usize, c2: usize) -> [[bool; 3]; 3] {
-            let mut ret: [[bool; 3]; 3] = [
-                [false, false, false],
-                [false, false, false],
-                [false, false, false],
-            ];
-            for x in 0..3 {
-                for y in 0..3 {
-                    let p = x * 3 + y;
-                    ret[x][y] = p == c1 || p == c2;
-                }
-            }
-            ret
-        }
-
         // POSICIONES SIN ROTACIONES NI REFLEXIONES
-        let changes = [[0, 1], [0, 2], [0, 5], [0, 8], [1, 3]];
-
-        for [change_1, change_2] in changes.iter() {
-            let diffs = diffs_for_changes(*change_1, *change_2);
-            let moves = moves_for_changes(diffs, 25);
-            match moves {
-                None => {
-                    println!("Diffs:{} {} no moves", change_1, change_2);
-                }
-                Some(moves) => {
-                    println!("Diffs:{} {} Moves:{:?}", change_1, change_2, moves);
-                }
-            }
+        let possible_changes = [[0, 1], [0, 5], [1, 3]];
+        let impossible_changes = [[0, 2], [0, 8]];
+        let depth = 26;
+        for [change_1, change_2] in possible_changes.iter() {
+            let moves = moves_for_changes( indexes_to_changes( &vec![*change_1, *change_2] ), depth);
+            assert!(moves.is_some());
+            println!("Diffs:{} {} Moves:{:?}", change_1, change_2, moves.unwrap());
+        }
+        for [change_1, change_2] in impossible_changes.iter() {
+            let moves = moves_for_changes( indexes_to_changes( &vec![*change_1, *change_2] ), depth);
+            assert!(moves.is_none());
+            println!("Diffs:{} {} No moves", change_1, change_2);
         }
     }
 
@@ -360,14 +362,16 @@ mod tests {
             println!("moves:{:?}", moves);
             let moved_board = scrambled
                 .apply_moves_to_empty_position(&moves)
+                .unwrap()
                 .last()
                 .unwrap()
                 .clone();
             println!("moved_board:\n{}", moved_board.ascii_art_string());
             assert_eq!(moved_board, board);
+            assert!( assert_moves(&scrambled,&moves,board) );
         }
 
-        let max = 40;
+        let max = 50;
 
         for step in 10..max {
             search_with_step(step);
