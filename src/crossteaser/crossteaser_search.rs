@@ -140,6 +140,7 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchCustomMoves<'a> {
     }
 
     fn expand_state(&self, board: &Board<'a>) -> Vec<Board<'a>> {
+        println!( "BoardSearchCustomMoves::expand_state:\n{}", board.ascii_art_string() );
         self.moves
             .iter()
             .map(|moves| board.apply_moves_to_empty_position_get_last(moves))

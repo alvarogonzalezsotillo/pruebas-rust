@@ -25,7 +25,7 @@ fn resuelve_016<'a>(goal: Board<'a>, board: Board<'a>, max_level: u64 ) -> bool 
     let search_exact_changes = BoardSearchExactChanges {
         goal: goal,
         max_depth: Some(max_level),
-        changes: [ [true,true,false], [false,false,false], [true,true,false] ]
+        changes: indexes_to_changes( &vec!(0,1,6,7) )
     };
     let (found, _, _) = a_star_search(board, &search_exact_changes);
     if found.is_none(){
@@ -35,25 +35,36 @@ fn resuelve_016<'a>(goal: Board<'a>, board: Board<'a>, max_level: u64 ) -> bool 
     let board_up_to_016 = found.unwrap().borrow().state;
     println!( "Aproximación a 016:\n{}", board_up_to_016.ascii_art_string() );
 
-    let move_0167 = moves_for_changes( [[true,true,false], [false,false,false], [true,true,false]], max_level );
-    let move_016 = moves_for_changes( [[true,true,false], [false,false,false], [true,false,false]], max_level );
-    let move_167 = moves_for_changes( [[false,true,false], [false,false,false], [true,true,false]], max_level );
-    let move_16 = moves_for_changes( [[false,true,false], [false,false,false], [true,false,false]], max_level );
-    let move_01 = moves_for_changes( [[true,true,false], [false,false,false], [false,false,false]], max_level );
-    let move_67 = moves_for_changes( [[false,false,false], [false,false,false], [true,true,false]], max_level );
+    let indexes = vec!(
+        vec!(0,1,6,7),
+        vec!(0,1,6),
+        vec!(0,1,7),
+        vec!(0,6,7),
+        vec!(0,1),
+        vec!(0,6),
+        vec!(0,7),
+        vec!(1,6),
+        vec!(1,7),
+        vec!(6,7),
+    );
+
+    let changes : Vec<(Vec<u64>,[[bool;3];3])> = indexes.into_iter().
+        map( |indexes| (indexes.clone(),indexes_to_changes( &indexes )) ).collect();
+
+    let moves : Vec<Option<(Vec<u64>,Vec<Direction>)>> = changes.into_iter().map( |(indexes,changes)| {
+        println!( "Buscando movimientos para:{:?}", indexes);
+        moves_for_changes(changes, max_level).map(|moves| (indexes,moves) )
+    }).collect();
+
+    let moves : Vec<Vec<Direction>> = moves.into_iter().filter( |o| o.is_some() ).map( |o| o.unwrap().1 ).collect();
+
+    
     let delegate = BoardSearchCustomMoves{
         delegate: &BoardSearchWithGoal{
             goal: goal,
             max_depth: Some(max_level)
         },
-        moves: vec![
-            move_0167.unwrap(),
-            move_016.unwrap(),
-            move_167.unwrap(),
-            move_16.unwrap(),
-            move_01.unwrap(),
-            move_67.unwrap(),
-        ],
+        moves: moves
     };
     println!("Tengo todas las aproximaciones finales");
     let (found, _, _) = a_star_search(board_up_to_016, &delegate);
