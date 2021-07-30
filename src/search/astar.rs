@@ -102,7 +102,7 @@ pub fn a_star_search<'a, T: State + PartialEq + Eq + Display>(
 
         if current.borrow().level > max_visited_level {
             max_visited_level = current.borrow().level;
-            println!("Level:{}", max_visited_level);
+            // println!("Level:{}", max_visited_level);
         }
 
         for child in children {

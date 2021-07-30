@@ -294,7 +294,7 @@ impl std::fmt::Display for Board<'_> {
         let mut str: String = "".to_string();
         for x in 0..3 {
             for y in 0..3 {
-                str = str + " " + &self.pieces[x][y].to_string();
+                str = str + " " + &self.piece_from_coords(x,y).to_string();
             }
         }
         write!(f, "({})", str)
@@ -310,15 +310,12 @@ impl PartialEq for Board<'_> {
 }
 
 impl<'a> Board<'a> {
-    pub fn compute_difs(&self, b: &Board) -> [[bool; 3]; 3] {
-        let mut ret: [[bool; 3]; 3] = [
-            [false, false, false],
-            [false, false, false],
-            [false, false, false],
-        ];
-        for x in 0..3 {
-            for y in 0..3 {
-                ret[x][y] = self.pieces[x][y] != b.pieces[x][y];
+    pub fn compute_difs(&self, b: &Board) -> Vec<usize> {
+        let mut ret = vec!();
+
+        for i in 0..9 {
+            if self.piece_from_index(i) != b.piece_from_index(i){
+                ret.push(i);
             }
         }
         ret
@@ -343,20 +340,34 @@ impl<'a> Board<'a> {
     }
 
     pub fn from_piece(piece_set: &'a PieceSet, piece_index: usize) -> Board<'a> {
+        // HACER_UN_TEST_PARA_ESTO;
+
         let mut pieces = [[Self::empty(); 3]; 3];
         for i in 0..9 {
-            let row = i / 3;
-            let col = i % 3;
+            let (x,y) = Board::index_to_coords(i);
 
-            pieces[col][row] = piece_index;
+            pieces[x][y] = piece_index;
         }
         pieces[1][1] = Self::empty();
-
+        
         Board { piece_set, pieces }
     }
 
-    pub fn piece(&self, x: usize, y: usize) -> usize {
+    pub fn piece_from_coords(&self, x: usize, y: usize) -> usize {
         self.pieces[x][y]
+    }
+
+    pub fn piece_from_index(&self, index: usize ) -> usize {
+        let coords = Board::index_to_coords(index);
+        self.piece_from_coords(coords.0,coords.1)
+    }
+
+    pub fn coords_to_index( x: usize, y: usize ) -> usize {
+        x*3 + y
+    }
+
+    pub fn index_to_coords( index: usize ) -> (usize, usize) {
+        (index/3,index%3)
     }
 
     pub fn coords_to_i8(coords: (usize, usize)) -> (i8, i8) {
@@ -399,9 +410,9 @@ impl<'a> Board<'a> {
     pub fn ascii_art(&self) -> [[char; 11]; 11] {
         let mut b = [[' '; 11]; 11];
 
-        for x in 0..3 {
-            for y in 0..3 {
-                let piece_index = self.pieces[x][y];
+        for y in 0..3 {
+            for x in 0..3 {
+                let piece_index = self.piece_from_coords(x,y);
                 if piece_index == Board::empty() {
                     continue;
                 }
@@ -501,7 +512,7 @@ impl<'a> Board<'a> {
     }
 
     pub fn is_empty(&self, coords: (usize, usize)) -> bool {
-        self.pieces[coords.0][coords.1] == Self::empty()
+        self.piece_from_coords(coords.0,coords.1) == Self::empty()
     }
 
     pub fn empty_coords(&self) -> (usize, usize) {
@@ -550,7 +561,7 @@ impl<'a> Board<'a> {
             return None;
         }
 
-        let old_piece = self.pieces[coords.0][coords.1];
+        let old_piece = self.piece_from_coords(coords.0,coords.1);
 
         use Direction::*;
 
@@ -743,14 +754,7 @@ mod tests {
             println!("board:\n{}\n", board.ascii_art_string());
             println!("child:\n{}\n", child.ascii_art_string());
             println!("diffs:{:?}", diffs);
-            let mut count = 0;
-            for x in 0..3 {
-                for y in 0..3 {
-                    if diffs[x][y] {
-                        count += 1;
-                    }
-                }
-            }
+            let count = diffs.len();
             assert_eq!(count, 2);
         }
     }

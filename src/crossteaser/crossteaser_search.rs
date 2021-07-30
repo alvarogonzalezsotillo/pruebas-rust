@@ -93,19 +93,18 @@ impl<'a> SearchInfo<Board<'a>> for BoardSearchSomeChanges<'a> {
 pub struct BoardSearchExactChanges<'a> {
     pub goal: Board<'a>,
     pub max_depth: Option<u64>,
-    pub changes: [[bool; 3]; 3],
+    pub changes: Vec<usize>
 }
 
 impl<'a> SearchInfo<Board<'a>> for BoardSearchExactChanges<'a> {
     fn is_goal(&self, board: &Board<'a>) -> bool {
-        for x in 0..3 {
-            for y in 0..3 {
-                if !self.changes[x][y] && board.pieces[x][y] != self.goal.pieces[x][y] {
-                    return false;
-                }
-                if self.changes[x][y] && board.pieces[x][y] == self.goal.pieces[x][y] {
-                    return false;
-                }
+        for i in 0..9 {
+            let is_change = self.changes.contains(&i);
+            if is_change && self.goal.piece_from_index(i) == board.piece_from_index(i){
+                return false;
+            }
+            if !is_change && self.goal.piece_from_index(i) != board.piece_from_index(i){
+                return false;
             }
         }
         true
@@ -171,7 +170,7 @@ pub fn scrambled_board<'a>(initial_board: &Board<'a>, steps: usize) -> Board<'a>
 }
 
 pub fn moves_for_change_1_8() -> Vec<Direction> {
-    moves_for_changes( indexes_to_changes(&vec!(1,8)),26 ).unwrap()
+    moves_for_changes( vec!(1,8),26 ).unwrap()
 }
 
 pub fn indexes_to_changes( indexes: &Vec<u64> ) -> [[bool; 3];3] {
@@ -189,14 +188,14 @@ pub fn indexes_to_changes( indexes: &Vec<u64> ) -> [[bool; 3];3] {
     diffs
 }
 
-pub fn moves_for_changes(diffs: [[bool; 3]; 3], max_depth: u64) -> Option<Vec<Direction>> {
+pub fn moves_for_changes(changes: Vec<usize>, max_depth: u64) -> Option<Vec<Direction>> {
     use crate::search::astar::*;
     let piece_set = PieceSet::from_piece(&Piece::seed());
     let board = Board::from_initial(&piece_set, piece_set.get_piece_index_of_initial_piece());
     let search = BoardSearchExactChanges {
         goal: board,
         max_depth: Some(max_depth),
-        changes: diffs,
+        changes: changes,
     };
     let (found, _, _) = a_star_search(board, &search);
 
@@ -268,9 +267,11 @@ mod tests {
         println!("moved:\n{}", moved.ascii_art_string());
 
         assert!(search_2_changes.is_goal(&moved));
-        println!("{}", moved.ascii_art_string());
-        assert_ne!(board.pieces[1][0], moved.pieces[1][0]);
-        assert_ne!(board.pieces[2][2], moved.pieces[2][2]);
+        println!("board:\n{}", board.ascii_art_string());
+
+        
+        assert_ne!(board.piece_from_index(1), moved.piece_from_index(1));
+        assert_ne!(board.piece_from_index(8), moved.piece_from_index(8));
     }
 
     #[test]
@@ -315,23 +316,63 @@ mod tests {
     }
 
     #[test]
-    fn moves_for_two_changes() {
+    fn moves_for_two_changes_possible() {
         // POSICIONES SIN ROTACIONES NI REFLEXIONES
         let possible_changes = [[0, 1], [0, 5], [1, 3]];
-        let impossible_changes = [[0, 2], [0, 8]];
         let depth = 26;
         for [change_1, change_2] in possible_changes.iter() {
-            let moves = moves_for_changes( indexes_to_changes( &vec![*change_1, *change_2] ), depth);
+            let moves = moves_for_changes( vec![*change_1, *change_2], depth);
             assert!(moves.is_some());
             println!("Diffs:{} {} Moves:{:?}", change_1, change_2, moves.unwrap());
         }
+    }
+
+    #[test]
+    fn moves_for_two_changes_impossible() {
+        // POSICIONES SIN ROTACIONES NI REFLEXIONES
+        let impossible_changes = [[0, 2], [0, 8]];
+        let depth = 26;
         for [change_1, change_2] in impossible_changes.iter() {
-            let moves = moves_for_changes( indexes_to_changes( &vec![*change_1, *change_2] ), depth);
+            let moves = moves_for_changes( vec![*change_1, *change_2], depth);
             assert!(moves.is_none());
             println!("Diffs:{} {} No moves", change_1, change_2);
         }
     }
 
+    #[test]
+    fn moves_for_two_changes_are_for_two_changes() {
+        // POSICIONES SIN ROTACIONES NI REFLEXIONES
+        let possible_changes = [[0, 1], [0, 5], [1, 3]];
+        let depth = 26;
+        for [change_1, change_2] in possible_changes.iter() {
+            let changes = vec![*change_1, *change_2];
+
+            let moves = moves_for_changes( changes.clone(), depth).unwrap();
+            println!("Moves for {:?}:{:?}", changes, moves );
+            
+            let piece_set = PieceSet::from_piece(&Piece::seed());
+            let board = Board::from_initial(&piece_set, piece_set.get_piece_index_of_initial_piece());
+            let mut moved : Board = board.clone();
+            for _i in 0..3{
+                let new_moved = moved.apply_moves_to_empty_position_get_last(&moves).unwrap();
+                moved = new_moved.clone_with_pieceset(moved.piece_set);
+
+                println!("board:\n{}", board.ascii_art_string() );
+                println!("moved:\n{}", moved.ascii_art_string() );
+            
+                for i in 0..9{
+                    if i == *change_1 || i == *change_2{
+                        assert_ne!( board.piece_from_index(i as usize), moved.piece_from_index(i as usize));
+                    }
+                    else{
+                        assert_eq!( board.piece_from_index(i as usize), moved.piece_from_index(i as usize));
+                    }
+                }
+            }
+        }
+    }
+
+    
     #[test]
     fn search_on_scrambled_board() {
         fn search_with_step(step: usize) {
