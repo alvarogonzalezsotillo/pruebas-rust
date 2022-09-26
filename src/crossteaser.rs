@@ -281,6 +281,7 @@ impl Piece {
 pub struct Board<'a> {
     pub piece_set: &'a PieceSet,
     pieces: [[usize; 3]; 3],
+    pieces_id: [[usize; 3]; 3],
 }
 
 impl std::fmt::Debug for Board<'_> {
@@ -294,7 +295,9 @@ impl std::fmt::Display for Board<'_> {
         let mut str: String = "".to_string();
         for x in 0..3 {
             for y in 0..3 {
-                str = str + " " + &self.piece_from_coords(x,y).to_string();
+                let piece = &self.piece_from_coords(x, y).to_string();
+                let piece_id = &self.piece_id_from_coords(x, y).to_string();
+                str = str + "(" + piece + "," + piece_id + ") ";
             }
         }
         write!(f, "({})", str)
@@ -311,10 +314,10 @@ impl PartialEq for Board<'_> {
 
 impl<'a> Board<'a> {
     pub fn compute_difs(&self, b: &Board) -> Vec<usize> {
-        let mut ret = vec!();
+        let mut ret = vec![];
 
         for i in 0..9 {
-            if self.piece_from_index(i) != b.piece_from_index(i){
+            if self.piece_from_index(i) != b.piece_from_index(i) {
                 ret.push(i);
             }
         }
@@ -326,6 +329,8 @@ impl<'a> Board<'a> {
         colors_up_north: [Option<[Color; 2]>; 9],
     ) -> Board<'a> {
         let mut pieces = [[Self::empty(); 3]; 3];
+        let mut pieces_id = [[Self::empty(); 3]; 3];
+        let mut id = 1;
         for i in 0..9 {
             let row = i / 3;
             let col = i % 3;
@@ -334,40 +339,64 @@ impl<'a> Board<'a> {
                 let north = colors[1];
                 let piece = piece_set.get_piece_index_from_colors(up, north);
                 pieces[col][row] = piece.unwrap();
+                pieces_id[col][row] = id;
+                id += 1;
             }
         }
-        Board { piece_set, pieces }
+        Board {
+            piece_set,
+            pieces,
+            pieces_id,
+        }
     }
 
     pub fn from_piece(piece_set: &'a PieceSet, piece_index: usize) -> Board<'a> {
         // HACER_UN_TEST_PARA_ESTO;
 
         let mut pieces = [[Self::empty(); 3]; 3];
+        let mut pieces_id = [[Self::empty(); 3]; 3];
+        let mut id = 1;
         for i in 0..9 {
-            let (x,y) = Board::index_to_coords(i);
-
+            let (x, y) = Board::index_to_coords(i);
+            if x == 1 && y == 1 {
+                continue;
+            }
             pieces[x][y] = piece_index;
+            pieces_id[x][y] = id;
+            id += 1;
         }
-        pieces[1][1] = Self::empty();
-        
-        Board { piece_set, pieces }
+
+        Board {
+            piece_set,
+            pieces,
+            pieces_id,
+        }
     }
 
     pub fn piece_from_coords(&self, x: usize, y: usize) -> usize {
         self.pieces[x][y]
     }
 
-    pub fn piece_from_index(&self, index: usize ) -> usize {
+    pub fn piece_id_from_coords(&self, x: usize, y: usize) -> usize {
+        self.pieces_id[x][y]
+    }
+
+    pub fn piece_from_index(&self, index: usize) -> usize {
         let coords = Board::index_to_coords(index);
-        self.piece_from_coords(coords.0,coords.1)
+        self.piece_from_coords(coords.0, coords.1)
     }
 
-    pub fn coords_to_index( x: usize, y: usize ) -> usize {
-        x*3 + y
+    pub fn piece_id_from_index(&self, index: usize) -> usize {
+        let coords = Board::index_to_coords(index);
+        self.piece_id_from_coords(coords.0, coords.1)
     }
 
-    pub fn index_to_coords( index: usize ) -> (usize, usize) {
-        (index/3,index%3)
+    pub fn coords_to_index(x: usize, y: usize) -> usize {
+        x * 3 + y
+    }
+
+    pub fn index_to_coords(index: usize) -> (usize, usize) {
+        (index / 3, index % 3)
     }
 
     pub fn coords_to_i8(coords: (usize, usize)) -> (i8, i8) {
@@ -407,51 +436,54 @@ impl<'a> Board<'a> {
             .collect()
     }
 
-    pub fn ascii_art(&self) -> [[char; 11]; 11] {
-        let mut b = [[' '; 11]; 11];
+    pub fn ascii_art(&self) -> [[char; 14]; 11] {
+        let mut b = [[' '; 14]; 11];
 
         for y in 0..3 {
             for x in 0..3 {
-                let piece_index = self.piece_from_coords(x,y);
+                let piece_index = self.piece_from_coords(x, y);
                 if piece_index == Board::empty() {
                     continue;
                 }
 
                 let piece = self.piece_set.pieces[piece_index];
 
-                let o = (1 + x * 3, 1 + y * 3);
+                let o = (1 + (x) * 4, 1 + (y) * 3);
 
                 for direction in Direction::posible_rotations().iter() {
                     let p = direction.traslate((o.0 as i8, o.1 as i8));
                     let color = piece.color(*direction);
 
-                    b[p.1 as usize + y][p.0 as usize + x] = color.letter();
+                    b[p.1 as usize][p.0 as usize] = color.letter();
                 }
 
                 let color = piece.color(Direction::Up);
-                b[o.1 + y as usize][o.0 + x as usize] = color.letter();
+                b[o.1 as usize][o.0 as usize] = color.letter();
             }
         }
 
         b
     }
 
-    pub fn apply_moves_to_empty_position_get_last( &self, moves: &Vec<Direction>) -> Option<Board<'_>> {
-        self.apply_moves_to_empty_position(&moves).map( |vec| vec.last().unwrap().clone() )
+    pub fn apply_moves_to_empty_position_get_last(
+        &self,
+        moves: &Vec<Direction>,
+    ) -> Option<Board<'_>> {
+        self.apply_moves_to_empty_position(&moves)
+            .map(|vec| vec.last().unwrap().clone())
     }
-    
+
     pub fn apply_moves_to_empty_position(&self, moves: &Vec<Direction>) -> Option<Vec<Board<'a>>> {
         let mut ret = Vec::new();
         let mut b = self.clone();
         ret.push(b);
         for d in moves.iter() {
             let maybe_board = b.move_empty_position(*d);
-            if maybe_board.is_some(){
+            if maybe_board.is_some() {
                 b = maybe_board.unwrap();
                 ret.push(b);
-            }
-            else{
-                return None
+            } else {
+                return None;
             }
         }
         Some(ret)
@@ -487,24 +519,21 @@ impl<'a> Board<'a> {
     ) -> Board<'a> {
         let mut pieces = [[Self::empty(); 3]; 3];
         pieces[coords.0][coords.1] = piece;
-        Board { piece_set, pieces }
+        let mut pieces_id = [[Self::empty(); 3]; 3];
+        pieces_id[coords.0][coords.1] = 1;
+        Board {
+            piece_set,
+            pieces,
+            pieces_id,
+        }
     }
 
-    pub fn  clone_with_pieceset<'b>( &self, piece_set: &'b PieceSet ) -> Board<'b> {
-        Board { piece_set: piece_set, pieces: self.pieces }
-    }
-    
-    pub fn from_initial(piece_set: &'a PieceSet, piece_index: usize) -> Board<'a> {
-        let mut pieces = [[Self::empty(); 3]; 3];
-        for x in 0..3 {
-            for y in 0..3 {
-                if x == 1 && y == 1 {
-                    continue;
-                }
-                pieces[x][y] = piece_index;
-            }
+    pub fn clone_with_pieceset<'b>(&self, piece_set: &'b PieceSet) -> Board<'b> {
+        Board {
+            piece_set: piece_set,
+            pieces: self.pieces,
+            pieces_id: self.pieces_id,
         }
-        Board { piece_set, pieces }
     }
 
     pub fn empty() -> usize {
@@ -512,7 +541,7 @@ impl<'a> Board<'a> {
     }
 
     pub fn is_empty(&self, coords: (usize, usize)) -> bool {
-        self.piece_from_coords(coords.0,coords.1) == Self::empty()
+        self.piece_from_coords(coords.0, coords.1) == Self::empty()
     }
 
     pub fn empty_coords(&self) -> (usize, usize) {
@@ -561,7 +590,7 @@ impl<'a> Board<'a> {
             return None;
         }
 
-        let old_piece = self.piece_from_coords(coords.0,coords.1);
+        let old_piece = self.piece_from_coords(coords.0, coords.1);
 
         use Direction::*;
 
@@ -575,9 +604,14 @@ impl<'a> Board<'a> {
         pieces[coords.0][coords.1] = Self::empty();
         pieces[to.0][to.1] = piece;
 
+        let mut pieces_id = self.pieces_id.clone();
+        pieces_id[to.0][to.1] = pieces_id[coords.0][coords.1];
+        pieces_id[coords.0][coords.1] = Self::empty();
+
         Some(Board {
             piece_set: self.piece_set,
             pieces,
+            pieces_id,
         })
     }
 }
@@ -660,7 +694,7 @@ mod tests {
             let millis = now.elapsed().as_millis();
             println!("{}: {}", msg, millis);
             (millis, ret)
-        };
+        }
 
         let piece_set = PieceSet::from_piece(&Piece::seed());
         let times: usize = 10000000;
@@ -746,7 +780,7 @@ mod tests {
     #[test]
     fn diffs_of_children() {
         let piece_set = PieceSet::from_piece(&Piece::seed());
-        let board = Board::from_initial(&piece_set, 0);
+        let board = Board::from_piece(&piece_set, 0);
         let children = board.children_filtered();
 
         for child in children.iter() {
@@ -762,7 +796,7 @@ mod tests {
     #[test]
     fn initial_board() {
         let piece_set = PieceSet::from_piece(&Piece::seed());
-        let board = Board::from_initial(&piece_set, 0);
+        let board = Board::from_piece(&piece_set, 0);
         println!("{}", board.ascii_art_string());
         println!("");
         println!(
@@ -784,7 +818,7 @@ mod tests {
     #[test]
     fn initial_board_children() {
         let piece_set = PieceSet::from_piece(&Piece::seed());
-        let board = Board::from_initial(&piece_set, 0);
+        let board = Board::from_piece(&piece_set, 0);
         println!("{}", board.ascii_art_string());
         println!("");
 
@@ -808,7 +842,7 @@ mod tests {
     #[test]
     fn moves_to_empty_position() {
         let piece_set = PieceSet::from_piece(&Piece::seed());
-        let board = Board::from_initial(&piece_set, 0);
+        let board = Board::from_piece(&piece_set, 0);
 
         let mut b1 = board.move_empty_position(Direction::South).unwrap();
         b1 = b1.move_empty_position(Direction::East).unwrap();

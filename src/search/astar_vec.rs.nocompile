@@ -1,0 +1,156 @@
+use crate::search::*;
+
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+
+type NodeIndex = usize;
+
+#[derive(Eq)]
+pub struct VecSearchNode<T: State> {
+    to_root: NodeIndex,
+    me: NodeIndex,
+    level: u64,
+    heuristic: u64,
+    pub state: T,
+    pub cached_state_hash: u64,
+}
+
+impl<T: State> PartialEq for VecSearchNode<T> {
+    fn eq(&self, other: &VecSearchNode<T>) -> bool {
+        self.state.eq(&other.state)
+    }
+}
+
+impl<T: State> PartialOrd for VecSearchNode<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.heuristic.cmp(&other.heuristic))
+    }
+}
+
+impl<T: State> Ord for VecSearchNode<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+pub struct SearchGraph<'a, T: State, S: SearchInfo<T>> {
+    nodes_by_index: Vec<VecSearchNode<T>>,
+    not_expanded_nodes: BTreeSet<&'a VecSearchNode<T>>,
+    expanded_nodes: HashMap<T, NodeIndex>,
+    search_info: S,
+}
+
+impl<'a, T: State, S: SearchInfo<T>> SearchGraph<'a, T, S> {
+    pub fn new(root: T, search_info: S) -> SearchGraph<'a, T, S> {
+        let mut sg = SearchGraph {
+            nodes_by_index: vec![],
+            not_expanded_nodes: BTreeSet::new(),
+            expanded_nodes: HashMap::new(),
+            search_info,
+        };
+
+        sg.set_root(root);
+        sg
+    }
+
+    fn set_root(&mut self, state: T) {
+        let index = self.nodes_by_index.len();
+        assert_eq!(index, 0);
+
+        let hash = simple_hash(&state);
+
+        let node = VecSearchNode {
+            to_root: 0,
+            me: 0,
+            level: 0,
+            heuristic: 0,
+            state,
+            cached_state_hash: hash,
+        };
+
+        self.not_expanded_nodes.insert(&node);
+
+        self.nodes_by_index.push(node);
+    }
+
+    pub fn get_root_index(&self) -> NodeIndex {
+        0
+    }
+
+    pub fn get_node(&self, index: NodeIndex) -> &VecSearchNode<T> {
+        &self.nodes_by_index[index]
+    }
+
+    pub fn add_state(&mut self, parent_index: NodeIndex, state: T) -> NodeIndex {
+        let index = self.nodes_by_index.len();
+        assert!(parent_index < index);
+
+        let hash = simple_hash(&state);
+        let heuristic = self.search_info.heuristic(&state);
+
+        let node = VecSearchNode {
+            to_root: parent_index,
+            me: index,
+            level: self.nodes_by_index[parent_index].level + 1,
+            state,
+            heuristic,
+            cached_state_hash: hash,
+        };
+
+        self.nodes_by_index.push(node);
+        assert_eq!(self.nodes_by_index[index].me, index);
+
+        index
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::search::astar_vec::*;
+
+    impl State for String {}
+
+    #[derive(Debug, Clone)]
+    struct StringSearch {}
+
+    impl SearchInfo<String> for StringSearch {
+        fn heuristic(&self, _state: &String) -> u64 {
+            0
+        }
+
+        fn max_depth(&self) -> Option<u64> {
+            Some(5)
+        }
+
+        fn expand_state(&self, state: &String) -> Vec<String> {
+            vec![state.clone() + "0", state.clone() + "1"]
+        }
+
+        fn is_goal(&self, state: &String) -> bool {
+            state == "01010"
+        }
+    }
+
+    #[test]
+    fn empty_test() {
+        assert_eq!(1, 1);
+    }
+
+    #[test]
+    fn add_root() {
+        let root: String = "".to_string();
+        let search_info = StringSearch {};
+        let g = SearchGraph::new(root.clone(), search_info);
+
+        assert_eq!(*g.get_node(g.get_root_index()).state, root);
+    }
+
+    #[test]
+    fn add_one_child() {
+        let root: String = "".to_string();
+        let search_info = StringSearch {};
+        let mut g = SearchGraph::new(root.clone(), search_info);
+        g.add_state(g.get_root_index(), "child".to_string());
+    }
+}

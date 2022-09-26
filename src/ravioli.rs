@@ -9,23 +9,20 @@ use std::rc::Rc;
 type OImpl<T> = Rc<RefCell<T>>;
 
 #[derive(Debug)]
-pub struct O<T> {
-    rc: OImpl<T>,
-}
+pub struct O<T>(OImpl<T>);
+
 
 impl<T> O<T> {
     pub fn new(data: T) -> Self {
-        O {
-            rc: Rc::new(RefCell::new(data)),
-        }
+        O (Rc::new(RefCell::new(data)))
     }
 
     pub fn borrow(&self) -> Ref<T> {
-        self.rc.borrow()
+        self.0.borrow()
     }
 
     pub fn borrow_mut(&self) -> RefMut<T> {
-        self.rc.borrow_mut()
+        self.0.borrow_mut()
     }
 }
 
@@ -51,9 +48,7 @@ impl<T: Ord> Ord for O<T> {
 
 impl<T> Clone for O<T> {
     fn clone(&self) -> Self {
-        O {
-            rc: Rc::clone(&self.rc),
-        }
+        O (Rc::clone(&self.0) )
     }
 }
 

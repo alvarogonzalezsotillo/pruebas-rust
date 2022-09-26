@@ -97,7 +97,12 @@ pub fn a_star_search<'a, T: State + PartialEq + Eq + Display>(
         expanded_nodes.insert(state.clone(), current.clone());
 
         if expanded_counter % 10000 == 0 {
-            println!("Nodos expandidos: {} Nodos sin expandir:{} Ultimo nivel:{}", expanded_nodes.len(), not_expanded_nodes.len(), current.borrow().level );
+            println!(
+                "Nodos expandidos: {} Nodos sin expandir:{} Ultimo nivel:{}",
+                expanded_nodes.len(),
+                not_expanded_nodes.len(),
+                current.borrow().level
+            );
         }
 
         if current.borrow().level > max_visited_level {

@@ -5,6 +5,7 @@ use std::hash::Hasher;
 use crate::ravioli::O;
 
 pub mod astar;
+// pub mod astar_vec;
 
 fn simple_hash<T: Hash>(object: &T) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -53,7 +54,7 @@ impl<'a, T: State> SearchNode<'a, T> {
     }
 }
 
-pub trait State: Hash + Clone {}
+pub trait State: Eq + Hash + Clone {}
 
 pub fn new_child<'a, T: State>(node: &O<SearchNode<'a, T>>, new_state: T) -> SearchNode<'a, T> {
     SearchNode {
